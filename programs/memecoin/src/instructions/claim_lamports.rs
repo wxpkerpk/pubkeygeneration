@@ -25,7 +25,7 @@ pub struct ClaimLamports<'info> {
 
     #[account(
         mut,
-        seeds = [b"mint"],
+        seeds = [b"mint", memecoin_config.key().as_ref()],
         bump,
     )]
     pub mint: Account<'info, Mint>,

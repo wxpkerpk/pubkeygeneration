@@ -21,7 +21,7 @@ pub enum FundingRaiseTier {
 }
 
 impl FundingRaiseTier {
-    fn value(&self) -> u64 {
+    pub fn value(&self) -> u64 {
         match self {
             FundingRaiseTier::TwentySol => 20000000000,
             FundingRaiseTier::FiftySol => 50000000000,

@@ -63,10 +63,20 @@ pub mod memecoin {
 
     pub fn create_memecoin_config(
         ctx: Context<CreateMemecoinConfig>,
-        params: InitTokenParams,
-        funding_raise_tier: FundingRaiseTier
+        memecoin_name: String,
+        memecoin_symbol: String,
+        memecoin_uri: String,
+        memecoin_decimals: u8,
+        funding_raise_tier: u8
     ) -> Result<()> {
-        return create_memecoin_config::handler(ctx, &params, funding_raise_tier);
+        return create_memecoin_config::handler(
+            ctx,
+            &memecoin_name,
+            &memecoin_symbol,
+            &memecoin_uri,
+            memecoin_decimals,
+            funding_raise_tier,
+        );
     }
 
     pub fn buy_memecoin(
@@ -83,23 +93,19 @@ pub mod memecoin {
         return claim_lamports::handler(ctx, claim_amount);
     }
 
+    pub fn wrap_sol(
+        ctx: Context<WrapSol>,
+    ) -> Result<()> {
+        return wrap_sol::handler(
+            ctx,
+        );
+    }
+
     pub fn create_raydium_pool(
         ctx: Context<CreateRaydiumPool>,
-        init_amount_0: u64,
-        init_amount_1: u64,
-        open_time: u64,
-        lp_token_amount: u64,
-        maximum_token_0_amount: u64,
-        maximum_token_1_amount: u64,
     ) -> Result<()> {
         return create_raydium_pool::handler(
             ctx,
-            init_amount_0,
-            init_amount_1,
-            open_time,
-            lp_token_amount,
-            maximum_token_0_amount,
-            maximum_token_1_amount
         );
     }
 

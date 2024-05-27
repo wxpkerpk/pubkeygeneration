@@ -10,9 +10,11 @@ use anchor_lang::{
 use anchor_spl::{
     associated_token::AssociatedToken,
     metadata::{create_metadata_accounts_v3, CreateMetadataAccountsV3, Metadata},
-    token::{burn, mint_to, Burn, Mint, MintTo, Token, TokenAccount},
+    token::{ Mint, Token, TokenAccount},
+    token_2022::{mint_to, MintTo,}
 };
 use mpl_token_metadata::{ types::DataV2, accounts::{MasterEdition, Metadata as MetadataAccount }};
+use crate::errors::ErrorCode;
 
 #[derive(Accounts)]
 #[instruction(
@@ -42,11 +44,11 @@ pub struct CreateMemecoinConfig<'info> {
 
     #[account(
         init,
-        seeds = [b"mint"],
+        seeds = [b"mint", memecoin_config.key().as_ref()],
         bump,
         payer = creator,
         mint::decimals = params.decimals,
-        mint::authority = mint,
+        mint::authority = memecoin_config,
     )]
     pub mint: Account<'info, Mint>,
 
@@ -83,14 +85,20 @@ pub struct CreateMemecoinConfig<'info> {
 pub struct MemecoinCreated {
     pub creator: Pubkey,
     pub created_time: u64,
-    pub params: InitTokenParams,
-    pub funding_raise_tier: FundingRaiseTier,
+    pub name: String,
+    pub symbol: String,
+    pub uri: String,
+    pub decimals: u8,
+    pub funding_raise_tier: u8,
 }
 
 pub fn handler(
     ctx: Context<CreateMemecoinConfig>,
-    params: &InitTokenParams,
-    funding_raise_tier: FundingRaiseTier
+    memecoin_name: &str,
+    memecoin_symbol: &str,
+    memecoin_uri: &str,
+    memecoin_decimals: u8,
+    funding_raise_tier: u8
 ) -> Result<()> {
     let creator = &ctx.accounts.creator.key();
     let current_timestamp = ctx.accounts.clock.unix_timestamp as u64;
@@ -103,24 +111,34 @@ pub fn handler(
     );
 
     let memecoin_config = &mut ctx.accounts.memecoin_config;
+    let tier = match funding_raise_tier {
+        0 => FundingRaiseTier::TwentySol,
+        1 => FundingRaiseTier::FiftySol,
+        2 => FundingRaiseTier::OneHundredSol,
+        _ => return err!(ErrorCode::InvalidFundingRaiseTier),
+    };
     memecoin_config.create_memecoin_config(
         creator,
         ctx.accounts.creator_memecoin_counter.count,
         current_timestamp,
-        funding_raise_tier
+        tier
     )?;
 
     let creator_memecoin_counter = &mut ctx.accounts.creator_memecoin_counter;
     creator_memecoin_counter.increment();
 
 
-    let seeds = &["mint".as_bytes(), &[ctx.bumps.mint]];
+    let seeds = &[
+        ctx.accounts.memecoin_config.creator.as_ref(),
+        &ctx.accounts.memecoin_config.creator_memecoin_index.to_le_bytes(),
+        &[ctx.bumps.memecoin_config]
+    ];
     let signer = [&seeds[..]];
 
     let token_data: DataV2 = DataV2 {
-        name: (*params.name).parse().unwrap(),
-        symbol: (*params.symbol).parse().unwrap(),
-        uri: (*params.uri).parse().unwrap(),
+        name: memecoin_name.to_string(),
+        symbol: memecoin_symbol.to_string(),
+        uri: memecoin_uri.to_string(),
         seller_fee_basis_points: 0,
         creators: None,
         collection: None,
@@ -131,10 +149,10 @@ pub fn handler(
         ctx.accounts.token_metadata_program.to_account_info(),
         CreateMetadataAccountsV3 {
             payer: ctx.accounts.creator.to_account_info(),
-            update_authority: ctx.accounts.mint.to_account_info(),
+            update_authority: ctx.accounts.memecoin_config.to_account_info(),
             mint: ctx.accounts.mint.to_account_info(),
             metadata: ctx.accounts.metadata.to_account_info(),
-            mint_authority: ctx.accounts.mint.to_account_info(),
+            mint_authority: ctx.accounts.memecoin_config.to_account_info(),
             system_program: ctx.accounts.system_program.to_account_info(),
             rent: ctx.accounts.rent.to_account_info(),
         },
@@ -150,13 +168,13 @@ pub fn handler(
     )?;
 
     let quantity = MEMECOIN_TOTAL_SUPPLY
-        .checked_mul(10_i32.pow(params.decimals as u32) as u64)
+        .checked_mul(10_i32.pow(memecoin_decimals as u32) as u64)
         .ok_or_else(|| crate::errors::ErrorCode::CalculationError)?;
     mint_to(
         CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
             MintTo {
-                authority: ctx.accounts.mint.to_account_info(),
+                authority: ctx.accounts.memecoin_config.to_account_info(),
                 to: ctx.accounts.destination.to_account_info(),
                 mint: ctx.accounts.mint.to_account_info(),
             },
@@ -168,8 +186,11 @@ pub fn handler(
     emit!(MemecoinCreated {
             creator: ctx.accounts.creator.key(),
             created_time: current_timestamp,
-            params: params.clone(),
-            funding_raise_tier,
+            name: memecoin_name.to_string(),
+            symbol: memecoin_symbol.to_string(),
+            uri: memecoin_uri.to_string(),
+            decimals: memecoin_decimals,
+            funding_raise_tier
         }
     );
 

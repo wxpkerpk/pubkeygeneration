@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
     token::{self, Token, Burn},
-    token_2022::Token2022,
+    token_2022::{self, transfer_checked, TransferChecked, Token2022},
     token_interface::{Mint, TokenAccount, TokenInterface},
 };
 use raydium_cp_swap::{
@@ -10,8 +10,10 @@ use raydium_cp_swap::{
     program::RaydiumCpSwap,
     states::{AmmConfig, OBSERVATION_SEED, POOL_LP_MINT_SEED, POOL_SEED, POOL_VAULT_SEED},
 };
-use crate::state::{MemecoinConfig, LaunchStatus};
+use crate::state::{MemecoinConfig, LaunchStatus, GlobalConfig, MEMECOIN_TOTAL_SUPPLY};
 use crate::errors::ErrorCode;
+use std::str::FromStr;
+use crate::constants::WSOL_MINT_ADDRESS;
 
 #[derive(Accounts)]
 pub struct CreateRaydiumPool<'info> {
@@ -20,6 +22,12 @@ pub struct CreateRaydiumPool<'info> {
         bump
     )]
     pub memecoin_config: Account<'info, MemecoinConfig>,
+
+    #[account(
+        seeds = [b"CONFIG"],
+        bump
+    )]
+    pub global_config: Account<'info, GlobalConfig>,
 
     pub cp_swap_program: Program<'info, RaydiumCpSwap>,
 
@@ -55,13 +63,13 @@ pub struct CreateRaydiumPool<'info> {
     /// Token_0 mint, the key must smaller than token_1 mint.
     #[account(
         constraint = token_0_mint.key() < token_1_mint.key(),
-        mint::token_program = token_0_program,
+        mint::token_program = token_2022_program,
     )]
     pub token_0_mint: Box<InterfaceAccount<'info, Mint>>,
 
     /// Token_1 mint, the key must grater then token_0 mint.
     #[account(
-        mint::token_program = token_1_program,
+        mint::token_program = token_2022_program,
     )]
     pub token_1_mint: Box<InterfaceAccount<'info, Mint>>,
 
@@ -76,7 +84,7 @@ pub struct CreateRaydiumPool<'info> {
     )]
     pub lp_mint: UncheckedAccount<'info>,
 
-    /// payer token0 account
+    /// memecoin_config token0 account
     #[account(
         mut,
         token::mint = token_0_mint,
@@ -84,7 +92,7 @@ pub struct CreateRaydiumPool<'info> {
     )]
     pub memecoin_config_token_0: Box<InterfaceAccount<'info, TokenAccount>>,
 
-    /// creator token1 account
+    /// memecoin_config token1 account
     #[account(
         mut,
         token::mint = token_1_mint,
@@ -140,37 +148,100 @@ pub struct CreateRaydiumPool<'info> {
     )]
     pub observation_state: UncheckedAccount<'info>,
 
+    /// CHECK: checked by address constraint
+    #[account(
+        mut,
+        address = global_config.launch_success_fee_receiver.key(),
+    )]
+    pub launch_success_fee_receiver: UncheckedAccount<'info>,
+
     /// Program to create mint account and mint tokens
     pub token_program: Program<'info, Token>,
     /// Spl token program or token program 2022
-    pub token_0_program: Interface<'info, TokenInterface>,
-    /// Spl token program or token program 2022
-    pub token_1_program: Interface<'info, TokenInterface>,
+    pub token_2022_program: Interface<'info, TokenInterface>,
     /// Program to create an ATA for receiving position NFT
     pub associated_token_program: Program<'info, AssociatedToken>,
     /// To create a new program account
     pub system_program: Program<'info, System>,
     /// Sysvar for program account
     pub rent: Sysvar<'info, Rent>,
-
-    /// Token program 2022
-    pub token_program_2022: Program<'info, Token2022>,
+    /// Sysvar for clock account
+    pub clock: Sysvar<'info, Clock>,
 }
 
 pub fn handler(
     ctx: Context<CreateRaydiumPool>,
-    init_amount_0: u64,
-    init_amount_1: u64,
-    open_time: u64,
-    lp_token_amount: u64,
-    maximum_token_0_amount: u64,
-    maximum_token_1_amount: u64,
 ) -> Result<()> {
     require!(ctx.accounts.memecoin_config.status == LaunchStatus::Succeed, ErrorCode::OnlyCreatePoolWhenLaunchSuccess);
 
+    let total_funding_raise_amount = ctx.accounts.memecoin_config.funding_raise_tier.value();
+    let launch_success_fee_bps = ctx.accounts.global_config.launch_success_fee_bps as u64;
+    let launch_success_fee_sol_amount = total_funding_raise_amount
+        .checked_mul(launch_success_fee_bps).ok_or_else(|| ErrorCode::CalculationError)?
+        .checked_div(10000u64).ok_or_else(|| ErrorCode::CalculationError)?;
+
+    let wsol_mint_pubkey = Pubkey::from_str(WSOL_MINT_ADDRESS).unwrap();
+    let memecoin_decimal;
+    let init_amount_0;
+    let init_amount_1;
+    let launch_success_fee_memecoin_amount;
+    let memecoin_mint;
+    if ctx.accounts.token_0_mint.key() == wsol_mint_pubkey {
+        memecoin_decimal = ctx.accounts.token_1_mint.decimals;
+        memecoin_mint = &ctx.accounts.token_1_mint;
+        init_amount_0 = ctx.accounts.memecoin_config_token_0.amount;
+        launch_success_fee_memecoin_amount = ctx.accounts.memecoin_config_token_1.amount
+            .checked_mul(launch_success_fee_bps).ok_or_else(|| ErrorCode::CalculationError)?
+            .checked_div(10000u64).ok_or_else(|| ErrorCode::CalculationError)?;
+        init_amount_1 = ctx.accounts.memecoin_config_token_1.amount
+            .checked_sub(launch_success_fee_memecoin_amount).ok_or_else(|| ErrorCode::CalculationError)?;
+    } else {
+        memecoin_decimal = ctx.accounts.token_0_mint.decimals;
+        memecoin_mint = &ctx.accounts.token_0_mint;
+        init_amount_1 = ctx.accounts.memecoin_config_token_1.amount;
+        launch_success_fee_memecoin_amount = ctx.accounts.memecoin_config_token_0.amount
+            .checked_mul(launch_success_fee_bps).ok_or_else(|| ErrorCode::CalculationError)?
+            .checked_div(10000u64).ok_or_else(|| ErrorCode::CalculationError)?;
+        init_amount_0 = ctx.accounts.memecoin_config_token_0.amount
+            .checked_sub(launch_success_fee_memecoin_amount).ok_or_else(|| ErrorCode::CalculationError)?;
+    }
+
+    // Transfer sol fee
+    let seeds = &[
+        ctx.accounts.memecoin_config.creator.as_ref(),
+        &ctx.accounts.memecoin_config.creator_memecoin_index.to_le_bytes(),
+        &[ctx.bumps.memecoin_config]
+    ];
+    let signer = [&seeds[..]];
+    let transfer_sol_ix = solana_program::system_instruction::transfer(
+        &ctx.accounts.memecoin_config.key(),
+        &ctx.accounts.launch_success_fee_receiver.key(),
+        launch_success_fee_sol_amount,
+    );
+    solana_program::program::invoke_signed(
+        &transfer_sol_ix,
+        &[
+            ctx.accounts.memecoin_config.to_account_info(),
+            ctx.accounts.launch_success_fee_receiver.to_account_info(),
+        ],
+        &signer
+    )?;
+
+    // Transfer memecoin fee
+    let transfer_memecoin_cpi_accounts = TransferChecked {
+        from: ctx.accounts.memecoin_config.to_account_info(),
+        mint: memecoin_mint.to_account_info(),
+        to: ctx.accounts.launch_success_fee_receiver.to_account_info(),
+        authority: ctx.accounts.memecoin_config.to_account_info(),
+    };
+
+    let transfer_memecoin_cpi_program = ctx.accounts.token_2022_program.to_account_info();
+    let transfer_memecoin_cpi_ctx = CpiContext::new(transfer_memecoin_cpi_program, transfer_memecoin_cpi_accounts);
+    transfer_checked(transfer_memecoin_cpi_ctx, launch_success_fee_memecoin_amount, memecoin_decimal)?;
+
     // Create a raydium pool
     let initialize_cpi_accounts = cpi::accounts::Initialize {
-        creator: ctx.accounts.payer.to_account_info(),
+        creator: ctx.accounts.memecoin_config.to_account_info(),
         amm_config: ctx.accounts.amm_config.to_account_info(),
         authority: ctx.accounts.authority.to_account_info(),
         pool_state: ctx.accounts.pool_state.to_account_info(),
@@ -185,48 +256,27 @@ pub fn handler(
         create_pool_fee: ctx.accounts.create_pool_fee.to_account_info(),
         observation_state: ctx.accounts.observation_state.to_account_info(),
         token_program: ctx.accounts.token_program.to_account_info(),
-        token_0_program: ctx.accounts.token_0_program.to_account_info(),
-        token_1_program: ctx.accounts.token_1_program.to_account_info(),
+        token_0_program: ctx.accounts.token_2022_program.to_account_info(),
+        token_1_program: ctx.accounts.token_2022_program.to_account_info(),
         associated_token_program: ctx.accounts.associated_token_program.to_account_info(),
         system_program: ctx.accounts.system_program.to_account_info(),
         rent: ctx.accounts.rent.to_account_info(),
     };
-    let initialize_cpi_context = CpiContext::new(ctx.accounts.cp_swap_program.to_account_info(), initialize_cpi_accounts);
-    cpi::initialize(initialize_cpi_context, init_amount_0, init_amount_1, open_time)?;
 
-    // Deposit SOL and memecoin into the pool
     let seeds = &[
         ctx.accounts.memecoin_config.creator.as_ref(),
-        &ctx.accounts.memecoin_config.creator_memecoin_index.to_le_bytes()
+        &ctx.accounts.memecoin_config.creator_memecoin_index.to_le_bytes(),
+        &[ctx.bumps.memecoin_config]
     ];
     let signer = [&seeds[..]];
-
-    let deposit_cpi_accounts = cpi::accounts::Deposit {
-        owner: ctx.accounts.memecoin_config.to_account_info(),
-        authority: ctx.accounts.authority.to_account_info(),
-        pool_state: ctx.accounts.pool_state.to_account_info(),
-        owner_lp_token: ctx.accounts.memecoin_config_lp_token.to_account_info(),
-        token_0_account: ctx.accounts.memecoin_config_token_0.to_account_info(),
-        token_1_account: ctx.accounts.memecoin_config_token_1.to_account_info(),
-        token_0_vault: ctx.accounts.token_0_vault.to_account_info(),
-        token_1_vault: ctx.accounts.token_1_vault.to_account_info(),
-        token_program: ctx.accounts.token_program.to_account_info(),
-        token_program_2022: ctx.accounts.token_program_2022.to_account_info(),
-        vault_0_mint: ctx.accounts.token_0_mint.to_account_info(),
-        vault_1_mint: ctx.accounts.token_1_mint.to_account_info(),
-        lp_mint: ctx.accounts.lp_mint.to_account_info(),
-    };
-    let deposit_cpi_context = CpiContext::new_with_signer(
+    let initialize_cpi_context = CpiContext::new_with_signer(
         ctx.accounts.cp_swap_program.to_account_info(),
-        deposit_cpi_accounts,
+        initialize_cpi_accounts,
         &signer
     );
-    cpi::deposit(
-        deposit_cpi_context,
-        lp_token_amount,
-        maximum_token_0_amount,
-        maximum_token_1_amount,
-    )?;
+    let open_time = ctx.accounts.clock.unix_timestamp as u64;
+
+    cpi::initialize(initialize_cpi_context, init_amount_0, init_amount_1, open_time)?;
 
     // Burn all the LP tokens in the MemecoinConfig account
     let burn_cpi_accounts = Burn {

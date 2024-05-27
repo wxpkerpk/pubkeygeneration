@@ -17,4 +17,8 @@ pub enum ErrorCode {
     CannotClaimWhenLaunchSuccess, // 0x1775
     #[msg("Only can create the raydium pool when launched successfully.")]
     OnlyCreatePoolWhenLaunchSuccess, // 0x1776
+    #[msg("Wrong wrapped sol mint")]
+    WrongWSOLMint, // 0x1777
+    #[msg("Invalid funding raise tier")]
+    InvalidFundingRaiseTier, // 0x1778
 }
