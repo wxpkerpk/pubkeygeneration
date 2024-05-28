@@ -228,16 +228,20 @@ pub fn handler(
     )?;
 
     // Transfer memecoin fee
-    let transfer_memecoin_cpi_accounts = TransferChecked {
-        from: ctx.accounts.memecoin_config.to_account_info(),
-        mint: memecoin_mint.to_account_info(),
-        to: ctx.accounts.launch_success_fee_receiver.to_account_info(),
-        authority: ctx.accounts.memecoin_config.to_account_info(),
-    };
-
-    let transfer_memecoin_cpi_program = ctx.accounts.token_2022_program.to_account_info();
-    let transfer_memecoin_cpi_ctx = CpiContext::new(transfer_memecoin_cpi_program, transfer_memecoin_cpi_accounts);
-    transfer_checked(transfer_memecoin_cpi_ctx, launch_success_fee_memecoin_amount, memecoin_decimal)?;
+    memecoin_transfer(
+        CpiContext::new_with_signer(
+            ctx.accounts.token_2022_program.to_account_info(),
+            TransferChecked {
+                from: ctx.accounts.memecoin_config.to_account_info(),
+                mint: memecoin_mint.to_account_info(),
+                to: ctx.accounts.launch_success_fee_receiver.to_account_info(),
+                authority: ctx.accounts.memecoin_config.to_account_info(),
+            },
+            &signer,
+        ),
+        launch_success_fee_memecoin_amount,
+        memecoin_decimal
+    )?;
 
     // Create a raydium pool
     let initialize_cpi_accounts = cpi::accounts::Initialize {
@@ -263,12 +267,7 @@ pub fn handler(
         rent: ctx.accounts.rent.to_account_info(),
     };
 
-    let seeds = &[
-        ctx.accounts.memecoin_config.creator.as_ref(),
-        &ctx.accounts.memecoin_config.creator_memecoin_index.to_le_bytes(),
-        &[ctx.bumps.memecoin_config]
-    ];
-    let signer = [&seeds[..]];
+
     let initialize_cpi_context = CpiContext::new_with_signer(
         ctx.accounts.cp_swap_program.to_account_info(),
         initialize_cpi_accounts,

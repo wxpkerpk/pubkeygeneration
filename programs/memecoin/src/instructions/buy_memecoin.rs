@@ -10,8 +10,10 @@ use anchor_lang::{
 use anchor_spl::{
     associated_token::AssociatedToken,
     metadata::{create_metadata_accounts_v3, CreateMetadataAccountsV3, Metadata},
-    token::{transfer as memecoin_transfer, Burn, Mint, Token, TokenAccount, Transfer},
+    token::{transfer, Burn, Mint, Token, TokenAccount, Transfer},
+    token_2022::{self, transfer_checked as memecoin_transfer, TransferChecked, Token2022},
 };
+use anchor_spl::token_interface::TokenInterface;
 use mpl_token_metadata::{ types::DataV2, accounts::{MasterEdition, Metadata as MetadataAccount }};
 use crate::errors::ErrorCode;
 
@@ -36,14 +38,19 @@ pub struct BuyMemecoin<'info> {
     #[account(
         init_if_needed,
         payer = buyer,
-        associated_token::mint = mint,
-        associated_token::authority = buyer,
+        token::mint = mint,
+        token::authority = buyer,
+        seeds=[b"MEME_COIN", mint.key().as_ref(), buyer.key().as_ref()],
+        bump
     )]
     pub buyer_token: Account<'info, TokenAccount>,
 
     #[account(
-        associated_token::mint = mint,
-        associated_token::authority = memecoin_config
+        mut,
+        token::mint = mint,
+        token::authority = memecoin_config,
+        seeds=[b"MEME_COIN", mint.key().as_ref(), memecoin_config.key().as_ref()],
+        bump
     )]
     pub memecoin_config_token: Account<'info, TokenAccount>,
 
@@ -51,6 +58,8 @@ pub struct BuyMemecoin<'info> {
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
+    /// Spl token program or token program 2022
+    pub token_2022_program: Interface<'info, TokenInterface>,
 }
 
 #[event]
@@ -115,15 +124,17 @@ pub fn handler(
 
     memecoin_transfer(
         CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info(),
-            Transfer {
+            ctx.accounts.token_2022_program.to_account_info(),
+            TransferChecked {
                 from: ctx.accounts.memecoin_config_token.to_account_info(),
+                mint: ctx.accounts.mint.to_account_info(),
                 to: ctx.accounts.buyer_token.to_account_info(),
                 authority: ctx.accounts.memecoin_config.to_account_info(),
             },
             &signer,
         ),
         buy_amount,
+        ctx.accounts.mint.decimals
     )?;
 
     emit!(MemecoinBought {

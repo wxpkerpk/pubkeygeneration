@@ -18,7 +18,7 @@ use crate::errors::ErrorCode;
 
 #[derive(Accounts)]
 #[instruction(
-    params: InitTokenParams
+    memecoin_decimals: u8
 )]
 pub struct CreateMemecoinConfig<'info> {
     #[account(
@@ -39,6 +39,13 @@ pub struct CreateMemecoinConfig<'info> {
     )]
     pub memecoin_config: Account<'info, MemecoinConfig>,
 
+    ///CHECK: Using "address" constraint to validate fee receiver address
+    #[account(
+        mut,
+        address = global_config.create_memecoin_fee_receiver
+    )]
+    pub create_memecoin_fee_receiver: UncheckedAccount<'info>,
+
     #[account(mut)]
     pub creator: Signer<'info>,
 
@@ -47,23 +54,27 @@ pub struct CreateMemecoinConfig<'info> {
         seeds = [b"mint", memecoin_config.key().as_ref()],
         bump,
         payer = creator,
-        mint::decimals = params.decimals,
+        mint::decimals = memecoin_decimals,
         mint::authority = memecoin_config,
     )]
     pub mint: Account<'info, Mint>,
 
+    /*
     ///CHECK: Using "address" constraint to validate metadata account address
     #[account(
         mut,
         address = MasterEdition::find_pda(&mint.key()).0
     )]
     pub metadata: UncheckedAccount<'info>,
+     */
 
     #[account(
         init_if_needed,
         payer = creator,
-        associated_token::mint = mint,
-        associated_token::authority = memecoin_config,
+        token::mint = mint,
+        token::authority = memecoin_config,
+        seeds=[b"MEME_COIN", mint.key().as_ref(), memecoin_config.key().as_ref()],
+        bump
     )]
     pub destination: Account<'info, TokenAccount>,
 
@@ -77,7 +88,7 @@ pub struct CreateMemecoinConfig<'info> {
     pub clock: Sysvar<'info, Clock>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
-    pub token_metadata_program: Program<'info, Metadata>,
+    //pub token_metadata_program: Program<'info, Metadata>,
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
@@ -106,7 +117,7 @@ pub fn handler(
     // Charge for the create memecoin fee
     lamports_transfer(
         &ctx.accounts.creator.key(),
-        &ctx.accounts.global_config.create_memecoin_fee_receiver,
+        &ctx.accounts.create_memecoin_fee_receiver.key(),
         ctx.accounts.global_config.create_memecoin_fee
     );
 
@@ -119,7 +130,7 @@ pub fn handler(
     };
     memecoin_config.create_memecoin_config(
         creator,
-        ctx.accounts.creator_memecoin_counter.count,
+        0,
         current_timestamp,
         tier
     )?;
@@ -135,6 +146,7 @@ pub fn handler(
     ];
     let signer = [&seeds[..]];
 
+    /*
     let token_data: DataV2 = DataV2 {
         name: memecoin_name.to_string(),
         symbol: memecoin_symbol.to_string(),
@@ -166,10 +178,11 @@ pub fn handler(
         true,
         None,
     )?;
+     */
 
     let quantity = MEMECOIN_TOTAL_SUPPLY
         .checked_mul(10_i32.pow(memecoin_decimals as u32) as u64)
-        .ok_or_else(|| crate::errors::ErrorCode::CalculationError)?;
+        .ok_or_else(|| ErrorCode::CalculationError)?;
     mint_to(
         CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),

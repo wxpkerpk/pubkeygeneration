@@ -10,8 +10,10 @@ use anchor_lang::{
 use anchor_spl::{
     associated_token::AssociatedToken,
     metadata::{create_metadata_accounts_v3, CreateMetadataAccountsV3, Metadata},
-    token::{transfer as memecoin_transfer, Burn, Mint, Token, TokenAccount, Transfer},
+    token::{transfer, Burn, Mint, Token, TokenAccount, Transfer},
+    token_2022::{self, transfer_checked as memecoin_transfer, TransferChecked, Token2022},
 };
+use anchor_spl::token_interface::TokenInterface;
 use mpl_token_metadata::{ types::DataV2, accounts::{MasterEdition, Metadata as MetadataAccount }};
 use crate::errors::ErrorCode;
 
@@ -34,20 +36,27 @@ pub struct ClaimLamports<'info> {
     pub claimer: Signer<'info>,
 
     #[account(
-        associated_token::mint = mint,
-        associated_token::authority = claimer,
+        mut,
+        token::mint = mint,
+        token::authority = claimer,
+        seeds=[b"MEME_COIN", mint.key().as_ref(), claimer.key().as_ref()],
+        bump
     )]
     pub claimer_token: Account<'info, TokenAccount>,
 
     #[account(
-        associated_token::mint = mint,
-        associated_token::authority = memecoin_config
+        token::mint = mint,
+        token::authority = memecoin_config,
+        seeds=[b"MEME_COIN", mint.key().as_ref(), memecoin_config.key().as_ref()],
+        bump
     )]
     pub memecoin_config_token: Account<'info, TokenAccount>,
 
     pub clock: Sysvar<'info, Clock>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
+    /// Spl token program or token program 2022
+    pub token_2022_program: Interface<'info, TokenInterface>,
 }
 
 #[event]
@@ -85,14 +94,16 @@ pub fn handler(
     // User send the memecoin back
     memecoin_transfer(
         CpiContext::new(
-            ctx.accounts.token_program.to_account_info(),
-            Transfer {
+            ctx.accounts.token_2022_program.to_account_info(),
+            TransferChecked {
                 from: ctx.accounts.claimer_token.to_account_info(),
+                mint: ctx.accounts.mint.to_account_info(),
                 to: ctx.accounts.memecoin_config_token.to_account_info(),
                 authority: ctx.accounts.claimer.to_account_info(),
             },
         ),
         claim_amount,
+        ctx.accounts.mint.decimals
     )?;
 
     // Transfer the lamports back to claimer

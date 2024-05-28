@@ -49,7 +49,7 @@ pub struct MemecoinConfig {
 pub const MEMECOIN_TOTAL_SUPPLY: u64 = 1000000000;
 
 impl MemecoinConfig {
-    pub const LEN: usize = 8 + 32 + 8 + (1 + 1) + (1 + 1);
+    pub const LEN: usize = 8 + 32 + 4 + 8 + (1 + 1) + (1 + 1);
 
     pub fn create_memecoin_config(
         &mut self,

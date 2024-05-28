@@ -14,7 +14,7 @@ memecoin = "AGAqYVPTrydtAdzLQBt8c1Rp61dHNipmsiCPHyYgMzV"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
+cluster = "devnet"
 wallet = "/Users/sp/.config/solana/id.json"
 
 [scripts]

@@ -38,8 +38,10 @@ pub struct WrapSol<'info> {
     #[account(
         init_if_needed,
         payer = payer,
-        associated_token::mint = wrapped_sol_mint,
-        associated_token::authority = memecoin_config,
+        token::mint = wrapped_sol_mint,
+        token::authority = memecoin_config,
+        seeds=[b"WSOL", memecoin_config.key().as_ref()],
+        bump
     )]
     pub memecoin_config_wrapped_sol_account: Account<'info, TokenAccount>,
 
