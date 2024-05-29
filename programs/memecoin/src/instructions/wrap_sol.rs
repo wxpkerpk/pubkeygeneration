@@ -19,6 +19,7 @@ use crate::constants::WSOL_MINT_ADDRESS;
 #[derive(Accounts)]
 pub struct WrapSol<'info> {
     #[account(
+        mut,
         seeds = [memecoin_config.creator.key().as_ref(), &memecoin_config.creator_memecoin_index.to_le_bytes()],
         bump
     )]
@@ -75,33 +76,25 @@ pub fn handler(
         ).ok_or_else(|| ErrorCode::CalculationError)?
         .checked_div(10000u64).ok_or_else(|| ErrorCode::CalculationError)?;
 
-    let transfer_ix = solana_program::system_instruction::transfer(
+    lamports_transfer(
         &ctx.accounts.memecoin_config.key(),
         &ctx.accounts.memecoin_config_wrapped_sol_account.key(),
-        wrap_amount,
+        wrap_amount
     );
-    solana_program::program::invoke_signed(
-        &transfer_ix,
-        &[
-            ctx.accounts.memecoin_config.to_account_info(),
-            ctx.accounts.memecoin_config_wrapped_sol_account.to_account_info(),
-        ],
-        &signer
-    )?;
 
     // Initialize the WSOL account
-    let cpi_accounts = token_2022::InitializeAccount3 {
+    let cpi_accounts = token::InitializeAccount3 {
         account: ctx.accounts.memecoin_config_wrapped_sol_account.to_account_info(),
         mint: ctx.accounts.wrapped_sol_mint.to_account_info(),
         authority: ctx.accounts.memecoin_config.to_account_info(),
     };
 
     let cpi_ctx = CpiContext::new_with_signer(
-        ctx.accounts.token_program_2022.to_account_info(),
+        ctx.accounts.token_program.to_account_info(),
         cpi_accounts,
         &signer
     );
-    token_2022::initialize_account3(cpi_ctx)?;
+    token::initialize_account3(cpi_ctx)?;
 
     Ok(())
 }

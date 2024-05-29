@@ -2,8 +2,11 @@ use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
     token::{self, Token, Burn},
-    token_2022::{self, transfer_checked, TransferChecked, Token2022},
+    token_2022::{self, transfer_checked as memecoin_transfer, TransferChecked, Token2022},
     token_interface::{Mint, TokenAccount, TokenInterface},
+};
+use anchor_lang::{
+    solana_program::system_instruction::transfer as lamports_transfer,
 };
 use raydium_cp_swap::{
     cpi,
@@ -18,6 +21,7 @@ use crate::constants::WSOL_MINT_ADDRESS;
 #[derive(Accounts)]
 pub struct CreateRaydiumPool<'info> {
     #[account(
+        mut,
         seeds = [memecoin_config.creator.key().as_ref(), &memecoin_config.creator_memecoin_index.to_le_bytes()],
         bump
     )]
@@ -40,9 +44,7 @@ pub struct CreateRaydiumPool<'info> {
 
     /// CHECK: pool vault and lp mint authority
     #[account(
-        seeds = [
-        raydium_cp_swap::AUTH_SEED.as_bytes(),
-        ],
+        seeds = [raydium_cp_swap::AUTH_SEED.as_bytes()],
         bump,
     )]
     pub authority: UncheckedAccount<'info>,
@@ -51,10 +53,10 @@ pub struct CreateRaydiumPool<'info> {
     #[account(
         mut,
         seeds = [
-        POOL_SEED.as_bytes(),
-        amm_config.key().as_ref(),
-        token_0_mint.key().as_ref(),
-        token_1_mint.key().as_ref(),
+            POOL_SEED.as_bytes(),
+            amm_config.key().as_ref(),
+            token_0_mint.key().as_ref(),
+            token_1_mint.key().as_ref(),
         ],
         bump,
     )]
@@ -122,9 +124,9 @@ pub struct CreateRaydiumPool<'info> {
     #[account(
         mut,
         seeds = [
-        POOL_VAULT_SEED.as_bytes(),
-        pool_state.key().as_ref(),
-        token_1_mint.key().as_ref()
+            POOL_VAULT_SEED.as_bytes(),
+            pool_state.key().as_ref(),
+            token_1_mint.key().as_ref()
         ],
         bump,
     )]
@@ -141,8 +143,8 @@ pub struct CreateRaydiumPool<'info> {
     #[account(
         mut,
         seeds = [
-        OBSERVATION_SEED.as_bytes(),
-        pool_state.key().as_ref(),
+            OBSERVATION_SEED.as_bytes(),
+            pool_state.key().as_ref(),
         ],
         bump,
     )]
@@ -207,27 +209,20 @@ pub fn handler(
     }
 
     // Transfer sol fee
+
+    lamports_transfer(
+        &ctx.accounts.memecoin_config.key(),
+        &ctx.accounts.launch_success_fee_receiver.key(),
+        launch_success_fee_sol_amount
+    );
+
+    // Transfer memecoin fee
     let seeds = &[
         ctx.accounts.memecoin_config.creator.as_ref(),
         &ctx.accounts.memecoin_config.creator_memecoin_index.to_le_bytes(),
         &[ctx.bumps.memecoin_config]
     ];
     let signer = [&seeds[..]];
-    let transfer_sol_ix = solana_program::system_instruction::transfer(
-        &ctx.accounts.memecoin_config.key(),
-        &ctx.accounts.launch_success_fee_receiver.key(),
-        launch_success_fee_sol_amount,
-    );
-    solana_program::program::invoke_signed(
-        &transfer_sol_ix,
-        &[
-            ctx.accounts.memecoin_config.to_account_info(),
-            ctx.accounts.launch_success_fee_receiver.to_account_info(),
-        ],
-        &signer
-    )?;
-
-    // Transfer memecoin fee
     memecoin_transfer(
         CpiContext::new_with_signer(
             ctx.accounts.token_2022_program.to_account_info(),

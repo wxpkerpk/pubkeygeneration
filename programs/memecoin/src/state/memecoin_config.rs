@@ -46,7 +46,8 @@ pub struct MemecoinConfig {
     pub status: LaunchStatus,
 }
 
-pub const MEMECOIN_TOTAL_SUPPLY: u64 = 1000000000;
+pub const MEMECOIN_TOTAL_SUPPLY: u64 = 1_000_000_000_000_000;
+pub const MEMECOIN_DECIMAL: u64 = 1_000_000;
 
 impl MemecoinConfig {
     pub const LEN: usize = 8 + 32 + 4 + 8 + (1 + 1) + (1 + 1);
@@ -70,7 +71,9 @@ impl MemecoinConfig {
     pub fn token_price(
         &self,
     ) -> Result<u64> {
-        let price = self.funding_raise_tier.value().checked_div(MEMECOIN_TOTAL_SUPPLY).ok_or_else(|| ErrorCode::CalculationError)?;
+        let price = self.funding_raise_tier.value()
+            .checked_mul(MEMECOIN_DECIMAL).ok_or_else(|| ErrorCode::CalculationError)?
+            .checked_div(MEMECOIN_TOTAL_SUPPLY).ok_or_else(|| ErrorCode::CalculationError)?;
 
         Ok(price)
     }

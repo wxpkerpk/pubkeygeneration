@@ -10,16 +10,16 @@ use anchor_lang::{
 use anchor_spl::{
     associated_token::AssociatedToken,
     metadata::{create_metadata_accounts_v3, CreateMetadataAccountsV3, Metadata},
-    token::{transfer, Burn, Mint, Token, TokenAccount, Transfer},
-    token_2022::{self, transfer_checked as memecoin_transfer, TransferChecked, Token2022},
+    token::{transfer as memecoin_transfer, Burn, Mint, Token, TokenAccount, Transfer},
+    //token_2022::{self, transfer_checked as memecoin_transfer, TransferChecked, Token2022},
 };
 use anchor_spl::token_interface::TokenInterface;
-use mpl_token_metadata::{ types::DataV2, accounts::{MasterEdition, Metadata as MetadataAccount }};
 use crate::errors::ErrorCode;
 
 #[derive(Accounts)]
 pub struct BuyMemecoin<'info> {
     #[account(
+        mut,
         seeds = [memecoin_config.creator.key().as_ref(), &memecoin_config.creator_memecoin_index.to_le_bytes()],
         bump
     )]
@@ -66,7 +66,9 @@ pub struct BuyMemecoin<'info> {
 pub struct MemecoinBought {
     pub buyer: Pubkey,
     pub buy_amount: u64,
+    pub mint: Pubkey,
     pub token_price: u64,
+    pub remain_amount: u64, // Remaining amount to sell
 }
 
 pub fn handler(
@@ -77,20 +79,21 @@ pub fn handler(
 
     let memecoin_config_token_balance = ctx.accounts.memecoin_config_token.amount;
     let memecoin_decimal = ctx.accounts.mint.decimals;
+    /*
     let total_supply = MEMECOIN_TOTAL_SUPPLY
-        .checked_mul(10_i32.pow(memecoin_decimal as u32) as u64)
+        .checked_mul(10_u32.pow(memecoin_decimal as u32) as u64)
         .ok_or_else(|| ErrorCode::CalculationError)?;
-    let sold_amount = total_supply
+     */
+    let sold_amount = MEMECOIN_TOTAL_SUPPLY
         .checked_sub(memecoin_config_token_balance)
         .ok_or_else(|| ErrorCode::CalculationError)?;
-    require!(sold_amount + buy_amount <= total_supply / 2, ErrorCode::UnsoldTokenInsufficient);
-
+    require!(sold_amount + buy_amount <= MEMECOIN_TOTAL_SUPPLY / 2, ErrorCode::UnsoldTokenInsufficient);
 
     let current_timestamp = ctx.accounts.clock.unix_timestamp as u64;
     let memecoin_created_time = ctx.accounts.memecoin_config.created_time;
     let memecoin_config = &mut ctx.accounts.memecoin_config;
     if current_timestamp >= memecoin_created_time + 3600 {
-        if sold_amount == total_supply / 2 {
+        if sold_amount == MEMECOIN_TOTAL_SUPPLY / 2 {
             memecoin_config.set_memecoin_status(
                 LaunchStatus::Succeed
             )?;
@@ -102,7 +105,7 @@ pub fn handler(
 
         return err!(ErrorCode::SaleClosed);
     } else {
-        if sold_amount + buy_amount == total_supply / 2 {
+        if sold_amount + buy_amount == MEMECOIN_TOTAL_SUPPLY / 2 {
             memecoin_config.set_memecoin_status(
                 LaunchStatus::Succeed
             )?;
@@ -118,29 +121,33 @@ pub fn handler(
     // Send user the memecoin
     let seeds = &[
         ctx.accounts.memecoin_config.creator.as_ref(),
-        &ctx.accounts.memecoin_config.creator_memecoin_index.to_le_bytes()
+        &ctx.accounts.memecoin_config.creator_memecoin_index.to_le_bytes(),
+        &[ctx.bumps.memecoin_config]
     ];
     let signer = [&seeds[..]];
 
     memecoin_transfer(
         CpiContext::new_with_signer(
-            ctx.accounts.token_2022_program.to_account_info(),
-            TransferChecked {
+            ctx.accounts.token_program.to_account_info(),
+            Transfer {
                 from: ctx.accounts.memecoin_config_token.to_account_info(),
-                mint: ctx.accounts.mint.to_account_info(),
                 to: ctx.accounts.buyer_token.to_account_info(),
                 authority: ctx.accounts.memecoin_config.to_account_info(),
             },
             &signer,
         ),
         buy_amount,
-        ctx.accounts.mint.decimals
     )?;
 
+    let remain_amount = (MEMECOIN_TOTAL_SUPPLY / 2)
+        .checked_sub(sold_amount).unwrap()
+        .checked_sub(buy_amount).unwrap();
     emit!(MemecoinBought {
             buyer: ctx.accounts.buyer.key(),
             buy_amount,
+            mint: ctx.accounts.mint.key(),
             token_price,
+            remain_amount,
         }
     );
 

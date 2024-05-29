@@ -9,17 +9,22 @@ use anchor_lang::{
 };
 use anchor_spl::{
     associated_token::AssociatedToken,
-    metadata::{create_metadata_accounts_v3, CreateMetadataAccountsV3, Metadata},
-    token::{ Mint, Token, TokenAccount},
-    token_2022::{mint_to, MintTo,}
+    metadata::{
+        create_metadata_accounts_v3,
+        CreateMetadataAccountsV3,
+        Metadata,
+        mpl_token_metadata::types::DataV2,
+    },
+    token::{Token, TokenAccount, mint_to, MintTo, Mint},
+    //token_2022::{mint_to, MintTo},
+    //token_interface::Mint,
 };
-use mpl_token_metadata::{ types::DataV2, accounts::{MasterEdition, Metadata as MetadataAccount }};
+use anchor_spl::token_interface::TokenInterface;
+//use mpl_token_metadata::accounts::{MasterEdition, Metadata as MetadataAccount };
+use mpl_token_metadata::pda::find_metadata_account;
 use crate::errors::ErrorCode;
 
 #[derive(Accounts)]
-#[instruction(
-    memecoin_decimals: u8
-)]
 pub struct CreateMemecoinConfig<'info> {
     #[account(
         init_if_needed,
@@ -54,19 +59,17 @@ pub struct CreateMemecoinConfig<'info> {
         seeds = [b"mint", memecoin_config.key().as_ref()],
         bump,
         payer = creator,
-        mint::decimals = memecoin_decimals,
+        mint::decimals = 6,
         mint::authority = memecoin_config,
     )]
     pub mint: Account<'info, Mint>,
 
-    /*
     ///CHECK: Using "address" constraint to validate metadata account address
     #[account(
         mut,
-        address = MasterEdition::find_pda(&mint.key()).0
+        address=find_metadata_account(&mint.key()).0
     )]
     pub metadata: UncheckedAccount<'info>,
-     */
 
     #[account(
         init_if_needed,
@@ -88,14 +91,19 @@ pub struct CreateMemecoinConfig<'info> {
     pub clock: Sysvar<'info, Clock>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
-    //pub token_metadata_program: Program<'info, Metadata>,
+    pub token_metadata_program: Program<'info, Metadata>,
     pub associated_token_program: Program<'info, AssociatedToken>,
+    /// Spl token program or token program 2022
+    pub token_2022_program: Interface<'info, TokenInterface>,
 }
 
 #[event]
 pub struct MemecoinCreated {
     pub creator: Pubkey,
     pub created_time: u64,
+    pub memecoin_config: Pubkey,
+    pub mint: Pubkey,
+    pub destination: Pubkey,
     pub name: String,
     pub symbol: String,
     pub uri: String,
@@ -130,14 +138,13 @@ pub fn handler(
     };
     memecoin_config.create_memecoin_config(
         creator,
-        0,
+        ctx.accounts.creator_memecoin_counter.count,
         current_timestamp,
         tier
     )?;
 
     let creator_memecoin_counter = &mut ctx.accounts.creator_memecoin_counter;
     creator_memecoin_counter.increment();
-
 
     let seeds = &[
         ctx.accounts.memecoin_config.creator.as_ref(),
@@ -146,7 +153,6 @@ pub fn handler(
     ];
     let signer = [&seeds[..]];
 
-    /*
     let token_data: DataV2 = DataV2 {
         name: memecoin_name.to_string(),
         symbol: memecoin_symbol.to_string(),
@@ -174,15 +180,11 @@ pub fn handler(
     create_metadata_accounts_v3(
         metadata_ctx,
         token_data,
-        false,
+        true,
         true,
         None,
     )?;
-     */
 
-    let quantity = MEMECOIN_TOTAL_SUPPLY
-        .checked_mul(10_i32.pow(memecoin_decimals as u32) as u64)
-        .ok_or_else(|| ErrorCode::CalculationError)?;
     mint_to(
         CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
@@ -193,12 +195,15 @@ pub fn handler(
             },
             &signer,
         ),
-        quantity,
+        MEMECOIN_TOTAL_SUPPLY,
     )?;
 
     emit!(MemecoinCreated {
             creator: ctx.accounts.creator.key(),
             created_time: current_timestamp,
+            memecoin_config: ctx.accounts.memecoin_config.key(),
+            mint: ctx.accounts.mint.key(),
+            destination: ctx.accounts.destination.key(),
             name: memecoin_name.to_string(),
             symbol: memecoin_symbol.to_string(),
             uri: memecoin_uri.to_string(),

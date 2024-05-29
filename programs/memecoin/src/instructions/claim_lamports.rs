@@ -5,21 +5,23 @@ use anchor_lang::{
         clock::UnixTimestamp,
         sysvar::clock::Clock,
         system_instruction::transfer as lamports_transfer,
+        program::invoke_signed,
     }
 };
 use anchor_spl::{
     associated_token::AssociatedToken,
     metadata::{create_metadata_accounts_v3, CreateMetadataAccountsV3, Metadata},
-    token::{transfer, Burn, Mint, Token, TokenAccount, Transfer},
-    token_2022::{self, transfer_checked as memecoin_transfer, TransferChecked, Token2022},
+    token::{transfer as memecoin_transfer, Burn, Mint, Token, TokenAccount, Transfer},
+    //token_2022::{self, transfer_checked as memecoin_transfer, TransferChecked, Token2022},
 };
 use anchor_spl::token_interface::TokenInterface;
-use mpl_token_metadata::{ types::DataV2, accounts::{MasterEdition, Metadata as MetadataAccount }};
+use solana_program::lamports;
 use crate::errors::ErrorCode;
 
 #[derive(Accounts)]
 pub struct ClaimLamports<'info> {
     #[account(
+        mut,
         seeds = [memecoin_config.creator.key().as_ref(), &memecoin_config.creator_memecoin_index.to_le_bytes()],
         bump
     )]
@@ -45,6 +47,7 @@ pub struct ClaimLamports<'info> {
     pub claimer_token: Account<'info, TokenAccount>,
 
     #[account(
+        mut,
         token::mint = mint,
         token::authority = memecoin_config,
         seeds=[b"MEME_COIN", mint.key().as_ref(), memecoin_config.key().as_ref()],
@@ -63,6 +66,7 @@ pub struct ClaimLamports<'info> {
 pub struct LamportsClaimed {
     pub claimer: Pubkey,
     pub claim_amount: u64,
+    pub mint: Pubkey,
     pub token_price: u64,
 }
 
@@ -72,17 +76,19 @@ pub fn handler(
 ) -> Result<()> {
     let memecoin_config_token_balance = ctx.accounts.memecoin_config_token.amount;
     let memecoin_decimal = ctx.accounts.mint.decimals;
+    /*
     let total_supply = MEMECOIN_TOTAL_SUPPLY
         .checked_mul(10_i32.pow(memecoin_decimal as u32) as u64)
         .ok_or_else(|| ErrorCode::CalculationError)?;
-    let sold_amount = total_supply
+     */
+    let sold_amount = MEMECOIN_TOTAL_SUPPLY
         .checked_sub(memecoin_config_token_balance)
         .ok_or_else(|| ErrorCode::CalculationError)?;
 
     let current_timestamp = ctx.accounts.clock.unix_timestamp as u64;
     if current_timestamp >= ctx.accounts.memecoin_config.created_time + 3600 {
         let memecoin_config = &mut ctx.accounts.memecoin_config;
-        if sold_amount == total_supply / 2 {
+        if sold_amount == MEMECOIN_TOTAL_SUPPLY / 2 {
            return err!(ErrorCode::CannotClaimWhenLaunchSuccess);
         } else {
             memecoin_config.set_memecoin_status(
@@ -94,26 +100,29 @@ pub fn handler(
     // User send the memecoin back
     memecoin_transfer(
         CpiContext::new(
-            ctx.accounts.token_2022_program.to_account_info(),
-            TransferChecked {
+            ctx.accounts.token_program.to_account_info(),
+            Transfer {
                 from: ctx.accounts.claimer_token.to_account_info(),
-                mint: ctx.accounts.mint.to_account_info(),
                 to: ctx.accounts.memecoin_config_token.to_account_info(),
                 authority: ctx.accounts.claimer.to_account_info(),
             },
         ),
         claim_amount,
-        ctx.accounts.mint.decimals
     )?;
 
     // Transfer the lamports back to claimer
     let token_price = ctx.accounts.memecoin_config.token_price()?;
     let total_lamports = claim_amount.checked_mul(token_price).ok_or_else(|| ErrorCode::CalculationError)?;
-    lamports_transfer(&ctx.accounts.memecoin_config.key(), &ctx.accounts.claimer.key(), total_lamports);
+    lamports_transfer(
+        &ctx.accounts.memecoin_config.key(),
+        &ctx.accounts.claimer.key(),
+        total_lamports
+    );
 
     emit!(LamportsClaimed {
             claimer: ctx.accounts.claimer.key(),
             claim_amount,
+            mint: ctx.accounts.mint.key(),
             token_price,
         }
     );
