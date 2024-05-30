@@ -107,7 +107,10 @@ pub struct MemecoinCreated {
     pub name: String,
     pub symbol: String,
     pub uri: String,
-    pub decimals: u8,
+    pub decimal: u8,
+    pub website: String,
+    pub telegram: String,
+    pub twitter: String,
     pub funding_raise_tier: u8,
 }
 
@@ -116,7 +119,9 @@ pub fn handler(
     memecoin_name: &str,
     memecoin_symbol: &str,
     memecoin_uri: &str,
-    memecoin_decimals: u8,
+    memecoin_website: &str,
+    memecoin_telegram: &str,
+    memecoin_twitter: &str,
     funding_raise_tier: u8
 ) -> Result<()> {
     let creator = &ctx.accounts.creator.key();
@@ -207,7 +212,10 @@ pub fn handler(
             name: memecoin_name.to_string(),
             symbol: memecoin_symbol.to_string(),
             uri: memecoin_uri.to_string(),
-            decimals: memecoin_decimals,
+            decimal: 6,
+            website: memecoin_website.to_string(),
+            telegram: memecoin_telegram.to_string(),
+            twitter: memecoin_twitter.to_string(),
             funding_raise_tier
         }
     );

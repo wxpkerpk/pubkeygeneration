@@ -5,6 +5,7 @@ use anchor_lang::{
         clock::UnixTimestamp,
         sysvar::clock::Clock,
         system_instruction::transfer as lamports_transfer,
+        program::invoke,
     }
 };
 use anchor_spl::{
@@ -78,12 +79,7 @@ pub fn handler(
     require!(ctx.accounts.memecoin_config.status == LaunchStatus::Ongoing, ErrorCode::StatusNotOngoing);
 
     let memecoin_config_token_balance = ctx.accounts.memecoin_config_token.amount;
-    let memecoin_decimal = ctx.accounts.mint.decimals;
-    /*
-    let total_supply = MEMECOIN_TOTAL_SUPPLY
-        .checked_mul(10_u32.pow(memecoin_decimal as u32) as u64)
-        .ok_or_else(|| ErrorCode::CalculationError)?;
-     */
+
     let sold_amount = MEMECOIN_TOTAL_SUPPLY
         .checked_sub(memecoin_config_token_balance)
         .ok_or_else(|| ErrorCode::CalculationError)?;
@@ -115,8 +111,19 @@ pub fn handler(
     // User pay for the memecoin by lamports
     let token_price = ctx.accounts.memecoin_config.token_price()?;
     let cost = buy_amount.checked_mul(token_price).ok_or_else(|| ErrorCode::CalculationError)?;
-    lamports_transfer(&ctx.accounts.buyer.key(), &ctx.accounts.memecoin_config.key(), cost);
-
+    let transfer_instruction = lamports_transfer(
+        &ctx.accounts.buyer.key(),
+        &ctx.accounts.memecoin_config.key(),
+        cost
+    );
+    invoke(
+        &transfer_instruction,
+        &[
+            ctx.accounts.buyer.to_account_info(),
+            ctx.accounts.memecoin_config.to_account_info(),
+            ctx.accounts.system_program.to_account_info(),
+        ],
+    )?;
 
     // Send user the memecoin
     let seeds = &[

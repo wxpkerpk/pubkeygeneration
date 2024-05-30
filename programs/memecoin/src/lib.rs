@@ -66,7 +66,9 @@ pub mod memecoin {
         memecoin_name: String,
         memecoin_symbol: String,
         memecoin_uri: String,
-        memecoin_decimals: u8,
+        memecoin_website: String,
+        memecoin_telegram: String,
+        memecoin_twitter: String,
         funding_raise_tier: u8
     ) -> Result<()> {
         return create_memecoin_config::handler(
@@ -74,7 +76,9 @@ pub mod memecoin {
             &memecoin_name,
             &memecoin_symbol,
             &memecoin_uri,
-            memecoin_decimals,
+            &memecoin_website,
+            &memecoin_telegram,
+            &memecoin_twitter,
             funding_raise_tier,
         );
     }

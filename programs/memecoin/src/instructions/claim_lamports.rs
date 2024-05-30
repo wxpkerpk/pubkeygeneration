@@ -16,6 +16,7 @@ use anchor_spl::{
 };
 use anchor_spl::token_interface::TokenInterface;
 use solana_program::lamports;
+use solana_program::program::invoke;
 use crate::errors::ErrorCode;
 
 #[derive(Accounts)]
@@ -75,12 +76,6 @@ pub fn handler(
     claim_amount: u64,
 ) -> Result<()> {
     let memecoin_config_token_balance = ctx.accounts.memecoin_config_token.amount;
-    let memecoin_decimal = ctx.accounts.mint.decimals;
-    /*
-    let total_supply = MEMECOIN_TOTAL_SUPPLY
-        .checked_mul(10_i32.pow(memecoin_decimal as u32) as u64)
-        .ok_or_else(|| ErrorCode::CalculationError)?;
-     */
     let sold_amount = MEMECOIN_TOTAL_SUPPLY
         .checked_sub(memecoin_config_token_balance)
         .ok_or_else(|| ErrorCode::CalculationError)?;
@@ -113,11 +108,26 @@ pub fn handler(
     // Transfer the lamports back to claimer
     let token_price = ctx.accounts.memecoin_config.token_price()?;
     let total_lamports = claim_amount.checked_mul(token_price).ok_or_else(|| ErrorCode::CalculationError)?;
-    lamports_transfer(
+    let transfer_instruction = lamports_transfer(
         &ctx.accounts.memecoin_config.key(),
         &ctx.accounts.claimer.key(),
         total_lamports
     );
+    let seeds = &[
+        ctx.accounts.memecoin_config.creator.as_ref(),
+        &ctx.accounts.memecoin_config.creator_memecoin_index.to_le_bytes(),
+        &[ctx.bumps.memecoin_config]
+    ];
+    let signer = [&seeds[..]];
+    invoke_signed(
+        &transfer_instruction,
+        &[
+            ctx.accounts.memecoin_config.to_account_info(),
+            ctx.accounts.claimer.to_account_info(),
+            ctx.accounts.system_program.to_account_info(),
+        ],
+        &signer
+    )?;
 
     emit!(LamportsClaimed {
             claimer: ctx.accounts.claimer.key(),
