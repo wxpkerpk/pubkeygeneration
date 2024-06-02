@@ -1,8 +1,8 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
-    token::{self, Token, Burn},
-    token_2022::{self, transfer_checked as memecoin_transfer, TransferChecked, Token2022},
+    token::{self, Token, Burn, Transfer, transfer as memecoin_transfer},
+    token_2022::{self, TransferChecked, Token2022},
     token_interface::{Mint, TokenAccount, TokenInterface},
 };
 use anchor_lang::{
@@ -209,12 +209,9 @@ pub fn handler(
     }
 
     // Transfer sol fee
-
-    lamports_transfer(
-        &ctx.accounts.memecoin_config.key(),
-        &ctx.accounts.launch_success_fee_receiver.key(),
-        launch_success_fee_sol_amount
-    );
+    ctx.accounts.memecoin_config.sub_lamports(launch_success_fee_sol_amount)?;
+    ctx.accounts.launch_success_fee_receiver.add_lamports(launch_success_fee_sol_amount)?;
+    msg!("launch success fee sol amount is : {}", launch_success_fee_sol_amount);
 
     // Transfer memecoin fee
     let seeds = &[
@@ -225,18 +222,17 @@ pub fn handler(
     let signer = [&seeds[..]];
     memecoin_transfer(
         CpiContext::new_with_signer(
-            ctx.accounts.token_2022_program.to_account_info(),
-            TransferChecked {
+            ctx.accounts.token_program.to_account_info(),
+            Transfer {
                 from: ctx.accounts.memecoin_config.to_account_info(),
-                mint: memecoin_mint.to_account_info(),
                 to: ctx.accounts.launch_success_fee_receiver.to_account_info(),
                 authority: ctx.accounts.memecoin_config.to_account_info(),
             },
             &signer,
         ),
         launch_success_fee_memecoin_amount,
-        memecoin_decimal
     )?;
+    msg!("launch success fee memecoin amount is : {}", launch_success_fee_memecoin_amount);
 
     // Create a raydium pool
     let initialize_cpi_accounts = cpi::accounts::Initialize {

@@ -66,6 +66,7 @@ pub mod memecoin {
         memecoin_name: String,
         memecoin_symbol: String,
         memecoin_uri: String,
+        memecoin_description: String,
         memecoin_website: String,
         memecoin_telegram: String,
         memecoin_twitter: String,
@@ -76,6 +77,7 @@ pub mod memecoin {
             &memecoin_name,
             &memecoin_symbol,
             &memecoin_uri,
+            &memecoin_description,
             &memecoin_website,
             &memecoin_telegram,
             &memecoin_twitter,
@@ -85,9 +87,10 @@ pub mod memecoin {
 
     pub fn buy_memecoin(
         ctx: Context<BuyMemecoin>,
+        hash: String,
         buy_amount: u64
     ) -> Result<()> {
-        return buy_memecoin::handler(ctx, buy_amount);
+        return buy_memecoin::handler(ctx, &hash, buy_amount);
     }
 
     pub fn claim_lamports(

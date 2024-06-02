@@ -73,6 +73,7 @@ impl MemecoinConfig {
     ) -> Result<u64> {
         let price = self.funding_raise_tier.value()
             .checked_mul(MEMECOIN_DECIMAL).ok_or_else(|| ErrorCode::CalculationError)?
+            .checked_mul(2).ok_or_else(|| ErrorCode::CalculationError)?
             .checked_div(MEMECOIN_TOTAL_SUPPLY).ok_or_else(|| ErrorCode::CalculationError)?;
 
         Ok(price)

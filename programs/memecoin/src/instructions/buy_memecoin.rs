@@ -70,10 +70,12 @@ pub struct MemecoinBought {
     pub mint: Pubkey,
     pub token_price: u64,
     pub remain_amount: u64, // Remaining amount to sell
+    pub hash: String,
 }
 
 pub fn handler(
     ctx: Context<BuyMemecoin>,
+    hash: &str,
     buy_amount: u64,
 ) -> Result<()> {
     require!(ctx.accounts.memecoin_config.status == LaunchStatus::Ongoing, ErrorCode::StatusNotOngoing);
@@ -110,7 +112,8 @@ pub fn handler(
 
     // User pay for the memecoin by lamports
     let token_price = ctx.accounts.memecoin_config.token_price()?;
-    let cost = buy_amount.checked_mul(token_price).ok_or_else(|| ErrorCode::CalculationError)?;
+    let cost = buy_amount.checked_mul(token_price).ok_or_else(|| ErrorCode::CalculationError)?
+        .checked_div(MEMECOIN_DECIMAL).ok_or_else(|| ErrorCode::CalculationError)?;
     let transfer_instruction = lamports_transfer(
         &ctx.accounts.buyer.key(),
         &ctx.accounts.memecoin_config.key(),
@@ -155,6 +158,7 @@ pub fn handler(
             mint: ctx.accounts.mint.key(),
             token_price,
             remain_amount,
+            hash: hash.to_string(),
         }
     );
 

@@ -4,14 +4,14 @@ use anchor_lang::{
     solana_program::{
         clock::UnixTimestamp,
         sysvar::clock::Clock,
-        system_instruction::transfer as lamports_transfer,
         program::invoke_signed,
-    }
+    },
+    system_program::{Transfer as LamportsTransfer, transfer as lamports_transfer},
 };
 use anchor_spl::{
     associated_token::AssociatedToken,
     metadata::{create_metadata_accounts_v3, CreateMetadataAccountsV3, Metadata},
-    token::{transfer as memecoin_transfer, Burn, Mint, Token, TokenAccount, Transfer},
+    token::{transfer as memecoin_transfer, Burn, Mint, Token, TokenAccount, Transfer as MemecoinTransfer},
     //token_2022::{self, transfer_checked as memecoin_transfer, TransferChecked, Token2022},
 };
 use anchor_spl::token_interface::TokenInterface;
@@ -84,19 +84,24 @@ pub fn handler(
     if current_timestamp >= ctx.accounts.memecoin_config.created_time + 3600 {
         let memecoin_config = &mut ctx.accounts.memecoin_config;
         if sold_amount == MEMECOIN_TOTAL_SUPPLY / 2 {
-           return err!(ErrorCode::CannotClaimWhenLaunchSuccess);
+            memecoin_config.set_memecoin_status(
+                LaunchStatus::Succeed
+            )?;
+            return err!(ErrorCode::CannotClaimWhenLaunchSuccess);
         } else {
             memecoin_config.set_memecoin_status(
                 LaunchStatus::Failed
             )?;
         }
+    } else {
+        return err!(ErrorCode::CannotClaimWhenNotEnd);
     }
 
     // User send the memecoin back
     memecoin_transfer(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
-            Transfer {
+            MemecoinTransfer {
                 from: ctx.accounts.claimer_token.to_account_info(),
                 to: ctx.accounts.memecoin_config_token.to_account_info(),
                 authority: ctx.accounts.claimer.to_account_info(),
@@ -107,27 +112,14 @@ pub fn handler(
 
     // Transfer the lamports back to claimer
     let token_price = ctx.accounts.memecoin_config.token_price()?;
-    let total_lamports = claim_amount.checked_mul(token_price).ok_or_else(|| ErrorCode::CalculationError)?;
-    let transfer_instruction = lamports_transfer(
-        &ctx.accounts.memecoin_config.key(),
-        &ctx.accounts.claimer.key(),
-        total_lamports
-    );
-    let seeds = &[
-        ctx.accounts.memecoin_config.creator.as_ref(),
-        &ctx.accounts.memecoin_config.creator_memecoin_index.to_le_bytes(),
-        &[ctx.bumps.memecoin_config]
-    ];
-    let signer = [&seeds[..]];
-    invoke_signed(
-        &transfer_instruction,
-        &[
-            ctx.accounts.memecoin_config.to_account_info(),
-            ctx.accounts.claimer.to_account_info(),
-            ctx.accounts.system_program.to_account_info(),
-        ],
-        &signer
-    )?;
+    let total_lamports = claim_amount.checked_mul(token_price).ok_or_else(|| ErrorCode::CalculationError)?
+        .checked_div(MEMECOIN_DECIMAL).ok_or_else(|| ErrorCode::CalculationError)?;
+    if total_lamports == 0 {
+        return err!(ErrorCode::ClaimAmountTooSmall);
+    }
+    ctx.accounts.memecoin_config.sub_lamports(total_lamports)?;
+    ctx.accounts.claimer.add_lamports(total_lamports)?;
+
 
     emit!(LamportsClaimed {
             claimer: ctx.accounts.claimer.key(),

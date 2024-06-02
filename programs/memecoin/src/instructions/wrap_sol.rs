@@ -75,12 +75,8 @@ pub fn handler(
             10000u64.checked_sub(launch_success_fee_bps).ok_or_else(|| ErrorCode::CalculationError)?
         ).ok_or_else(|| ErrorCode::CalculationError)?
         .checked_div(10000u64).ok_or_else(|| ErrorCode::CalculationError)?;
-
-    lamports_transfer(
-        &ctx.accounts.memecoin_config.key(),
-        &ctx.accounts.memecoin_config_wrapped_sol_account.key(),
-        wrap_amount
-    );
+    ctx.accounts.memecoin_config.sub_lamports(wrap_amount)?;
+    ctx.accounts.memecoin_config_wrapped_sol_account.add_lamports(wrap_amount)?;
 
     // Initialize the WSOL account
     let cpi_accounts = token::InitializeAccount3 {

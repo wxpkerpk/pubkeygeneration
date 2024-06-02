@@ -21,4 +21,8 @@ pub enum ErrorCode {
     WrongWSOLMint, // 0x1777
     #[msg("Invalid funding raise tier")]
     InvalidFundingRaiseTier, // 0x1778
+    #[msg("Cannot claim when not end.")]
+    CannotClaimWhenNotEnd, // 0x1779
+    #[msg("Claim amount is too small.")]
+    ClaimAmountTooSmall, // 0x177a
 }
