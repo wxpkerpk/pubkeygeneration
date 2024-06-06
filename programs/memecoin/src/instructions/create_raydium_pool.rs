@@ -65,13 +65,13 @@ pub struct CreateRaydiumPool<'info> {
     /// Token_0 mint, the key must smaller than token_1 mint.
     #[account(
         constraint = token_0_mint.key() < token_1_mint.key(),
-        mint::token_program = token_2022_program,
+        mint::token_program = token_program,
     )]
     pub token_0_mint: Box<InterfaceAccount<'info, Mint>>,
 
     /// Token_1 mint, the key must grater then token_0 mint.
     #[account(
-        mint::token_program = token_2022_program,
+        mint::token_program = token_program,
     )]
     pub token_1_mint: Box<InterfaceAccount<'info, Mint>>,
 
@@ -112,9 +112,9 @@ pub struct CreateRaydiumPool<'info> {
     #[account(
         mut,
         seeds = [
-        POOL_VAULT_SEED.as_bytes(),
-        pool_state.key().as_ref(),
-        token_0_mint.key().as_ref()
+            POOL_VAULT_SEED.as_bytes(),
+            pool_state.key().as_ref(),
+            token_0_mint.key().as_ref()
         ],
         bump,
     )]

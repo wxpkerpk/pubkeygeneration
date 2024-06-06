@@ -22,6 +22,7 @@ use anchor_spl::{
 use anchor_spl::token_interface::TokenInterface;
 //use mpl_token_metadata::accounts::{MasterEdition, Metadata as MetadataAccount };
 use mpl_token_metadata::pda::find_metadata_account;
+use solana_program::program::invoke;
 use crate::errors::ErrorCode;
 
 #[derive(Accounts)]
@@ -130,11 +131,19 @@ pub fn handler(
     let current_timestamp = ctx.accounts.clock.unix_timestamp as u64;
 
     // Charge for the create memecoin fee
-    lamports_transfer(
+    let transfer_instruction = lamports_transfer(
         &ctx.accounts.creator.key(),
         &ctx.accounts.create_memecoin_fee_receiver.key(),
         ctx.accounts.global_config.create_memecoin_fee
     );
+    invoke(
+        &transfer_instruction,
+        &[
+            ctx.accounts.creator.to_account_info(),
+            ctx.accounts.create_memecoin_fee_receiver.to_account_info(),
+            ctx.accounts.system_program.to_account_info(),
+        ],
+    )?;
 
     let memecoin_config = &mut ctx.accounts.memecoin_config;
     let tier = match funding_raise_tier {

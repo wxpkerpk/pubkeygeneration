@@ -4,8 +4,8 @@ use anchor_lang::{
     solana_program::{
         clock::UnixTimestamp,
         sysvar::clock::Clock,
-        system_instruction::transfer as lamports_transfer,
-    }
+    },
+    system_program,
 };
 use anchor_spl::{
     associated_token::AssociatedToken,
@@ -17,7 +17,7 @@ use std::str::FromStr;
 use crate::constants::WSOL_MINT_ADDRESS;
 
 #[derive(Accounts)]
-pub struct WrapSol<'info> {
+pub struct WrapSolSendLamports<'info> {
     #[account(
         mut,
         seeds = [memecoin_config.creator.key().as_ref(), &memecoin_config.creator_memecoin_index.to_le_bytes()],
@@ -34,6 +34,7 @@ pub struct WrapSol<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
 
+    /// CHECK：checked in the handler
     pub wrapped_sol_mint: Account<'info, Mint>,
 
     #[account(
@@ -49,13 +50,12 @@ pub struct WrapSol<'info> {
     pub token_program: Program<'info, Token>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
-    pub token_program_2022: Program<'info, Token2022>,
 }
 
 pub fn handler(
-    ctx: Context<WrapSol>,
+    ctx: Context<WrapSolSendLamports>,
 ) -> Result<()> {
-    require!(ctx.accounts.memecoin_config.status == LaunchStatus::Succeed, ErrorCode::OnlyCreatePoolWhenLaunchSuccess);
+    require!(ctx.accounts.memecoin_config.status == LaunchStatus::Succeed, ErrorCode::OnlyWrapSolWhenLaunchSuccess);
 
     let wsol_mint_pubkey = Pubkey::from_str(WSOL_MINT_ADDRESS).unwrap();
     require_keys_eq!(ctx.accounts.wrapped_sol_mint.key(), wsol_mint_pubkey, ErrorCode::WrongWSOLMint);
@@ -77,20 +77,6 @@ pub fn handler(
         .checked_div(10000u64).ok_or_else(|| ErrorCode::CalculationError)?;
     ctx.accounts.memecoin_config.sub_lamports(wrap_amount)?;
     ctx.accounts.memecoin_config_wrapped_sol_account.add_lamports(wrap_amount)?;
-
-    // Initialize the WSOL account
-    let cpi_accounts = token::InitializeAccount3 {
-        account: ctx.accounts.memecoin_config_wrapped_sol_account.to_account_info(),
-        mint: ctx.accounts.wrapped_sol_mint.to_account_info(),
-        authority: ctx.accounts.memecoin_config.to_account_info(),
-    };
-
-    let cpi_ctx = CpiContext::new_with_signer(
-        ctx.accounts.token_program.to_account_info(),
-        cpi_accounts,
-        &signer
-    );
-    token::initialize_account3(cpi_ctx)?;
 
     Ok(())
 }

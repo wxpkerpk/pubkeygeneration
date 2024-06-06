@@ -100,10 +100,18 @@ pub mod memecoin {
         return claim_lamports::handler(ctx, claim_amount);
     }
 
-    pub fn wrap_sol(
-        ctx: Context<WrapSol>,
+    pub fn wrap_sol_send_lamports(
+        ctx: Context<WrapSolSendLamports>,
     ) -> Result<()> {
-        return wrap_sol::handler(
+        return wrap_sol_send_lamports::handler(
+            ctx,
+        );
+    }
+
+    pub fn wrap_sol_sync_native(
+        ctx: Context<WrapSolSyncNative>,
+    ) -> Result<()> {
+        return wrap_sol_sync_native::handler(
             ctx,
         );
     }

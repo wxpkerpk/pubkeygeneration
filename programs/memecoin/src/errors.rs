@@ -25,4 +25,6 @@ pub enum ErrorCode {
     CannotClaimWhenNotEnd, // 0x1779
     #[msg("Claim amount is too small.")]
     ClaimAmountTooSmall, // 0x177a
+    #[msg("Only can wrap sol when launched successfully.")]
+    OnlyWrapSolWhenLaunchSuccess, // 0x177b
 }

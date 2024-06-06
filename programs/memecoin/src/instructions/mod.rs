@@ -7,7 +7,8 @@ pub mod create_memecoin_config;
 pub mod buy_memecoin;
 pub mod claim_lamports;
 pub mod create_raydium_pool;
-pub mod wrap_sol;
+pub mod wrap_sol_sync_native;
+pub mod wrap_sol_send_lamports;
 
 
 pub use initialize_global_config::*;
@@ -19,4 +20,5 @@ pub use create_memecoin_config::*;
 pub use buy_memecoin::*;
 pub use claim_lamports::*;
 pub use create_raydium_pool::*;
-pub use wrap_sol::*;
+pub use wrap_sol_sync_native::*;
+pub use wrap_sol_send_lamports::*;
