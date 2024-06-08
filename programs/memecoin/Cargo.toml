@@ -28,4 +28,5 @@ mpl-token-metadata = { version = "1.13.2", features = ["no-entrypoint"] }
 raydium-cp-swap = { git = "https://github.com/raydium-io/raydium-cp-swap", features = [
     "no-entrypoint",
     "cpi",
+    "devnet",
 ] }

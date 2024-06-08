@@ -12,6 +12,10 @@ use anchor_spl::{
     token_2022::{self, Token2022, Transfer, transfer_checked},
     token::{self, Token, TokenAccount, Mint}
 };
+use crate::constants::WSOL_MINT_ADDRESS;
+use crate::errors::ErrorCode;
+use std::str::FromStr;
+
 
 #[derive(Accounts)]
 pub struct WrapSolSyncNative<'info> {
@@ -45,6 +49,9 @@ pub struct WrapSolSyncNative<'info> {
 pub fn handler(
     ctx: Context<WrapSolSyncNative>,
 ) -> Result<()> {
+    let wsol_mint_pubkey = Pubkey::from_str(WSOL_MINT_ADDRESS).unwrap();
+    require_keys_eq!(ctx.accounts.wrapped_sol_mint.key(), wsol_mint_pubkey, ErrorCode::WrongWSOLMint);
+
     let seeds = &[
         ctx.accounts.memecoin_config.creator.as_ref(),
         &ctx.accounts.memecoin_config.creator_memecoin_index.to_le_bytes(),

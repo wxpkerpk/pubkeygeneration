@@ -27,4 +27,6 @@ pub enum ErrorCode {
     ClaimAmountTooSmall, // 0x177a
     #[msg("Only can wrap sol when launched successfully.")]
     OnlyWrapSolWhenLaunchSuccess, // 0x177b
+    #[msg("Invalid account.")]
+    InvalidAccount, // 0x177c
 }
