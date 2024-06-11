@@ -124,10 +124,10 @@ pub mod memecoin {
         );
     }
 
-    pub fn create_raydium_pool_2(
-        ctx: Context<CreateRaydiumPool2>,
+    pub fn create_raydium_pool_by_admin(
+        ctx: Context<CreateRaydiumPoolByAdmin>,
     ) -> Result<()> {
-        return create_raydium_pool_2::handler(
+        return create_raydium_pool_by_admin::handler(
             ctx,
         );
     }

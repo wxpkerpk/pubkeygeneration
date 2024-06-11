@@ -116,7 +116,6 @@ pub struct CreateRaydiumPool<'info> {
     )]
     pub launch_success_fee_receiver: UncheckedAccount<'info>,
 
-    // TODO: check this account
     /// CHECK: checked by address constraint
     #[account(
         mut,

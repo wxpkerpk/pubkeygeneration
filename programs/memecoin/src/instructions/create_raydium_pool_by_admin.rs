@@ -12,9 +12,10 @@ use crate::state::{MemecoinConfig, LaunchStatus, GlobalConfig, MEMECOIN_TOTAL_SU
 use crate::errors::ErrorCode;
 use std::str::FromStr;
 use crate::constants::WSOL_MINT_ADDRESS;
+use crate::constants::CREATE_RAYDIUM_POOL_FEE;
 
 #[derive(Accounts)]
-pub struct CreateRaydiumPool2<'info> {
+pub struct CreateRaydiumPoolByAdmin<'info> {
     #[account(
         mut,
         seeds = [memecoin_config.creator.key().as_ref(), &memecoin_config.creator_memecoin_index.to_le_bytes()],
@@ -52,35 +53,20 @@ pub struct CreateRaydiumPool2<'info> {
     )]
     pub memecoin_config_token: Account<'info, TokenAccount>,
 
-
     #[account(
         mut,
         token::mint = wsol_mint,
         token::authority = memecoin_config,
-        seeds=[b"WSOL", wsol_mint.key().as_ref(), memecoin_config.key().as_ref()],
+        seeds=[b"WSOL", memecoin_config.key().as_ref()],
         bump
     )]
     pub memecoin_config_wsol_token: Account<'info, TokenAccount>,
 
-    #[account(
-        init_if_needed,
-        payer = admin,
-        token::mint = memecoin_config_mint,
-        token::authority = admin,
-        seeds=[b"MEME_COIN", memecoin_config_mint.key().as_ref(), admin.key().as_ref()],
-        bump
-    )]
-    pub admin_memecoin_token: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub admin_memecoin_token: UncheckedAccount<'info>,
 
-    #[account(
-        init_if_needed,
-        payer = admin,
-        token::mint = wsol_mint,
-        token::authority = admin,
-        seeds=[b"WSOL", wsol_mint.key().as_ref(), admin.key().as_ref()],
-        bump
-    )]
-    pub admin_wsol_token: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub admin_wsol_token: UncheckedAccount<'info>,
 
     /// CHECK: checked by address constraint
     #[account(
@@ -89,23 +75,15 @@ pub struct CreateRaydiumPool2<'info> {
     )]
     pub launch_success_fee_receiver: UncheckedAccount<'info>,
 
+    /// CHECK: checked by address constraint
     #[account(
-        init_if_needed,
-        payer = admin,
-        token::mint = memecoin_config_mint,
-        token::authority = launch_success_fee_receiver,
-        seeds=[b"MEME_COIN", memecoin_config_mint.key().as_ref(), launch_success_fee_receiver.key().as_ref()],
-        bump
+        mut,
     )]
-    pub launch_success_memecoin_fee_receiver: Account<'info, TokenAccount>,
+    pub launch_success_memecoin_fee_receiver: UncheckedAccount<'info>,
 
+    /// CHECK: checked by address constraint
     #[account(
-        init_if_needed,
-        payer = admin,
-        token::mint = wsol_mint,
-        token::authority = launch_success_fee_receiver,
-        seeds=[b"WSOL", wsol_mint.key().as_ref(), launch_success_fee_receiver.key().as_ref()],
-        bump
+        mut,
     )]
     pub launch_success_wsol_fee_receiver: Account<'info, TokenAccount>,
 
@@ -119,7 +97,7 @@ pub struct CreateRaydiumPool2<'info> {
     pub rent: Sysvar<'info, Rent>,
 }
 
-pub fn handler(ctx: Context<CreateRaydiumPool2>) -> Result<()> {
+pub fn handler(ctx: Context<CreateRaydiumPoolByAdmin>) -> Result<()> {
     require!(ctx.accounts.memecoin_config.status == LaunchStatus::Succeed, ErrorCode::OnlyCreatePoolWhenLaunchSuccess);
     let wsol_mint_pubkey = Pubkey::from_str(WSOL_MINT_ADDRESS).unwrap();
     require_keys_eq!(ctx.accounts.wsol_mint.key(), wsol_mint_pubkey, ErrorCode::WrongWSOLMint);
@@ -178,11 +156,6 @@ pub fn handler(ctx: Context<CreateRaydiumPool2>) -> Result<()> {
     )?;
     msg!("transfer to admin memecoin amount is : {}", transfer_to_admin_memecoin_amount);
 
-    // Transfer sol fee
-    ctx.accounts.memecoin_config.sub_lamports(launch_success_fee_sol_amount)?;
-    ctx.accounts.launch_success_fee_receiver.add_lamports(launch_success_fee_sol_amount)?;
-    msg!("launch success fee sol amount is : {}", launch_success_fee_sol_amount);
-
     // Transfer memecoin fee
     token::transfer(
         CpiContext::new_with_signer(
@@ -198,6 +171,15 @@ pub fn handler(ctx: Context<CreateRaydiumPool2>) -> Result<()> {
     )?;
     msg!("launch success fee memecoin amount is : {}", launch_success_fee_memecoin_amount);
 
+    // Transfer sol fee
+    ctx.accounts.memecoin_config.sub_lamports(launch_success_fee_sol_amount)?;
+    ctx.accounts.launch_success_fee_receiver.add_lamports(launch_success_fee_sol_amount)?;
+    msg!("launch success fee sol amount is : {}", launch_success_fee_sol_amount);
+
+    // Transfer create raydium pool fee
+    ctx.accounts.memecoin_config.sub_lamports(CREATE_RAYDIUM_POOL_FEE)?;
+    ctx.accounts.admin.add_lamports(CREATE_RAYDIUM_POOL_FEE)?;
+    msg!("create raydium pool fee is : {}", CREATE_RAYDIUM_POOL_FEE);
 
     Ok(())
 }

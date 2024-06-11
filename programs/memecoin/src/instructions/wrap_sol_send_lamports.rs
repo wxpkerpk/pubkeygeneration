@@ -15,6 +15,7 @@ use anchor_spl::{
 use crate::errors::ErrorCode;
 use std::str::FromStr;
 use crate::constants::WSOL_MINT_ADDRESS;
+use crate::constants::CREATE_RAYDIUM_POOL_FEE;
 
 #[derive(Accounts)]
 pub struct WrapSolSendLamports<'info> {
@@ -74,7 +75,8 @@ pub fn handler(
         .checked_mul(
             10000u64.checked_sub(launch_success_fee_bps).ok_or_else(|| ErrorCode::CalculationError)?
         ).ok_or_else(|| ErrorCode::CalculationError)?
-        .checked_div(10000u64).ok_or_else(|| ErrorCode::CalculationError)?;
+        .checked_div(10000u64).ok_or_else(|| ErrorCode::CalculationError)?
+        .checked_sub(CREATE_RAYDIUM_POOL_FEE).ok_or_else(|| ErrorCode::CalculationError)?;
     ctx.accounts.memecoin_config.sub_lamports(wrap_amount)?;
     ctx.accounts.memecoin_config_wrapped_sol_account.add_lamports(wrap_amount)?;
 
