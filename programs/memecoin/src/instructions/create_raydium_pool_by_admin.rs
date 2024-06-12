@@ -109,6 +109,8 @@ pub fn handler(ctx: Context<CreateRaydiumPoolByAdmin>) -> Result<()> {
         .checked_div(10000u64).ok_or_else(|| ErrorCode::CalculationError)?;
     let transfer_to_admin_wsol_amount = total_funding_raise_amount
         .checked_sub(launch_success_fee_sol_amount)
+        .ok_or_else(|| ErrorCode::CalculationError)?
+        .checked_sub(CREATE_RAYDIUM_POOL_FEE)
         .ok_or_else(|| ErrorCode::CalculationError)?;
 
     let launch_success_fee_memecoin_amount = ctx.accounts.memecoin_config_token.amount
