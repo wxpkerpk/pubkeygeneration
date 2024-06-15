@@ -34,7 +34,7 @@ pub struct CreateMemecoinConfig<'info> {
         seeds = [b"COUNTER", creator.key().as_ref()],
         bump
     )]
-    pub creator_memecoin_counter: Account<'info, CreatorMemecoinCounter>,
+    pub creator_memecoin_counter: Box<Account<'info, CreatorMemecoinCounter>>,
 
     #[account(
         init,
@@ -43,7 +43,7 @@ pub struct CreateMemecoinConfig<'info> {
         seeds = [creator.key().as_ref(), &creator_memecoin_counter.count.to_le_bytes()],
         bump
     )]
-    pub memecoin_config: Account<'info, MemecoinConfig>,
+    pub memecoin_config: Box<Account<'info, MemecoinConfig>>,
 
     ///CHECK: Using "address" constraint to validate fee receiver address
     #[account(
@@ -63,7 +63,7 @@ pub struct CreateMemecoinConfig<'info> {
         mint::decimals = 6,
         mint::authority = memecoin_config,
     )]
-    pub mint: Account<'info, Mint>,
+    pub mint: Box<Account<'info, Mint>>,
 
     ///CHECK: Using "address" constraint to validate metadata account address
     #[account(
@@ -80,7 +80,7 @@ pub struct CreateMemecoinConfig<'info> {
         seeds=[b"MEME_COIN", mint.key().as_ref(), memecoin_config.key().as_ref()],
         bump
     )]
-    pub destination: Account<'info, TokenAccount>,
+    pub destination: Box<Account<'info, TokenAccount>>,
 
     #[account(
         seeds = [b"CONFIG"],
@@ -94,8 +94,6 @@ pub struct CreateMemecoinConfig<'info> {
     pub token_program: Program<'info, Token>,
     pub token_metadata_program: Program<'info, Metadata>,
     pub associated_token_program: Program<'info, AssociatedToken>,
-    /// Spl token program or token program 2022
-    pub token_2022_program: Interface<'info, TokenInterface>,
 }
 
 #[event]
