@@ -77,10 +77,10 @@ pub mod memecoin {
             &memecoin_name,
             &memecoin_symbol,
             &memecoin_uri,
-            &memecoin_description,
-            &memecoin_website,
-            &memecoin_telegram,
-            &memecoin_twitter,
+        //    &memecoin_description,
+          //  &memecoin_website,
+            //&memecoin_telegram,
+            //&memecoin_twitter,
             funding_raise_tier,
         );
     }
