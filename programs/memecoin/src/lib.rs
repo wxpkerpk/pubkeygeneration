@@ -66,10 +66,10 @@ pub mod memecoin {
         memecoin_name: String,
         memecoin_symbol: String,
         memecoin_uri: String,
-        memecoin_description: String,
-        memecoin_website: String,
-        memecoin_telegram: String,
-        memecoin_twitter: String,
+       // memecoin_description: String,
+     //  memecoin_website: String,
+       // memecoin_telegram: String,
+       // memecoin_twitter: String,
         funding_raise_tier: u8
     ) -> Result<()> {
         return create_memecoin_config::handler(
