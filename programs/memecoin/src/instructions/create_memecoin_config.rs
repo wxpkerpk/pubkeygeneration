@@ -119,10 +119,10 @@ pub fn handler(
     memecoin_name: &str,
     memecoin_symbol: &str,
     memecoin_uri: &str,
-    memecoin_description: &str,
-    memecoin_website: &str,
-    memecoin_telegram: &str,
-    memecoin_twitter: &str,
+    //memecoin_description: &str,
+    //memecoin_website: &str,
+    //memecoin_telegram: &str,
+    //memecoin_twitter: &str,
     funding_raise_tier: u8
 ) -> Result<()> {
     let creator = &ctx.accounts.creator.key();
