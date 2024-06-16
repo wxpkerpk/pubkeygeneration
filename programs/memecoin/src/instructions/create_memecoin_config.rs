@@ -221,11 +221,11 @@ pub fn handler(
             name: memecoin_name.to_string(),
             symbol: memecoin_symbol.to_string(),
             uri: memecoin_uri.to_string(),
-            description: memecoin_description.to_string(),
+          //  description: memecoin_description.to_string(),
             decimal: 6,
-            website: memecoin_website.to_string(),
-            telegram: memecoin_telegram.to_string(),
-            twitter: memecoin_twitter.to_string(),
+          //  website: memecoin_website.to_string(),
+          //  telegram: memecoin_telegram.to_string(),
+          //  twitter: memecoin_twitter.to_string(),
             funding_raise_tier
         }
     );
