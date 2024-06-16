@@ -106,11 +106,11 @@ pub struct MemecoinCreated {
     pub name: String,
     pub symbol: String,
     pub uri: String,
-    pub description: String,
+    // pub description: String,
     pub decimal: u8,
-    pub website: String,
-    pub telegram: String,
-    pub twitter: String,
+    // pub website: String,
+    // pub telegram: String,
+    // pub twitter: String,
     pub funding_raise_tier: u8,
 }
 
