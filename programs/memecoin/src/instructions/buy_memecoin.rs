@@ -167,7 +167,7 @@ pub fn handler(
         msg!("===================================");
         msg!("buylog:{}",serialized);
         msg!("===================================");
-    emit!(&event);
+    emit!(event);
 
     Ok(())
 }
