@@ -9,11 +9,13 @@ use anchor_lang::{
     solana_program::system_instruction::transfer as lamports_transfer,
     solana_program::pubkey::Pubkey,
 };
+/*
 use raydium_cp_swap::{
     cpi,
     program::RaydiumCpSwap,
     states::{AmmConfig, OBSERVATION_SEED, POOL_LP_MINT_SEED, POOL_SEED, POOL_VAULT_SEED},
 };
+ */
 use crate::state::{MemecoinConfig, LaunchStatus, GlobalConfig, MEMECOIN_TOTAL_SUPPLY};
 use crate::errors::ErrorCode;
 use std::str::FromStr;
@@ -34,7 +36,7 @@ pub struct CreateRaydiumPool<'info> {
     )]
     pub global_config: Account<'info, GlobalConfig>,
 
-    pub cp_swap_program: Program<'info, RaydiumCpSwap>,
+    //pub cp_swap_program: Program<'info, RaydiumCpSwap>,
     /// CHECK: used for devnet
     //pub cp_swap_program: UncheckedAccount<'info>,
 
@@ -43,7 +45,7 @@ pub struct CreateRaydiumPool<'info> {
     pub payer: Signer<'info>,
 
     /// Which config the pool belongs to.
-    pub amm_config: Box<Account<'info, AmmConfig>>,
+    //pub amm_config: Box<Account<'info, AmmConfig>>,
     /// CHECK: used for devnet
     //pub amm_config: UncheckedAccount<'info>,
 
@@ -135,6 +137,7 @@ pub struct CreateRaydiumPool<'info> {
 }
 
 pub fn handler(ctx: Context<CreateRaydiumPool>) -> Result<()> {
+    /*
     require!(ctx.accounts.memecoin_config.status == LaunchStatus::Succeed, ErrorCode::OnlyCreatePoolWhenLaunchSuccess);
 
     let total_funding_raise_amount = ctx.accounts.memecoin_config.funding_raise_tier.value();
@@ -230,6 +233,8 @@ pub fn handler(ctx: Context<CreateRaydiumPool>) -> Result<()> {
         launch_success_fee_memecoin_amount,
     )?;
     msg!("launch success fee memecoin amount is : {}", launch_success_fee_memecoin_amount);
+
+     */
 
     /*
     // Burn all the LP tokens in the MemecoinConfig account
