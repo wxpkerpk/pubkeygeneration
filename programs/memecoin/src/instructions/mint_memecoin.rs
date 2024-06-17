@@ -98,7 +98,7 @@ pub fn handler(
     memecoin_telegram: &str,
     memecoin_twitter: &str,
 ) -> Result<()> {
-    /*
+
     let seeds = &[
         ctx.accounts.memecoin_config.creator.as_ref(),
         &ctx.accounts.memecoin_config.creator_memecoin_index.to_le_bytes(),
@@ -176,7 +176,7 @@ pub fn handler(
         }
     );
 
-     */
+
 
     Ok(())
 }
