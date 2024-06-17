@@ -71,7 +71,7 @@ pub struct MintMemecoin<'info> {
 }
 
 #[event]
-pub struct MemecoinMinted {
+pub struct MemecoinCreated {
     pub creator: Pubkey,
     pub created_time: u64,
     pub memecoin_config: Pubkey,
