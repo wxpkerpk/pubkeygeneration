@@ -34,7 +34,7 @@ pub struct CreateMemecoinConfig<'info> {
         seeds = [b"COUNTER", creator.key().as_ref()],
         bump
     )]
-    pub creator_memecoin_counter: Box<Account<'info, CreatorMemecoinCounter>>,
+    pub creator_memecoin_counter: Account<'info, CreatorMemecoinCounter>,
 
     #[account(
         init,
@@ -43,7 +43,7 @@ pub struct CreateMemecoinConfig<'info> {
         seeds = [creator.key().as_ref(), &creator_memecoin_counter.count.to_le_bytes()],
         bump
     )]
-    pub memecoin_config: Box<Account<'info, MemecoinConfig>>,
+    pub memecoin_config: Account<'info, MemecoinConfig>,
 
     ///CHECK: Using "address" constraint to validate fee receiver address
     #[account(
