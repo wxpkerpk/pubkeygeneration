@@ -10,6 +10,7 @@ pub mod create_raydium_pool;
 pub mod wrap_sol_sync_native;
 pub mod wrap_sol_send_lamports;
 pub mod create_raydium_pool_by_admin;
+pub mod mint_memecoin;
 
 
 
@@ -25,3 +26,4 @@ pub use create_raydium_pool::*;
 pub use create_raydium_pool_by_admin::*;
 pub use wrap_sol_sync_native::*;
 pub use wrap_sol_send_lamports::*;
+pub use mint_memecoin::*;

@@ -63,25 +63,33 @@ pub mod memecoin {
 
     pub fn create_memecoin_config(
         ctx: Context<CreateMemecoinConfig>,
-        memecoin_name: String,
-        memecoin_symbol: String,
-        memecoin_uri: String,
-       // memecoin_description: String,
-     //  memecoin_website: String,
-       // memecoin_telegram: String,
-       // memecoin_twitter: String,
         funding_raise_tier: u8
     ) -> Result<()> {
         return create_memecoin_config::handler(
             ctx,
+            funding_raise_tier,
+        );
+    }
+
+    pub fn mint_memecoin(
+        ctx: Context<MintMemecoin>,
+        memecoin_name: String,
+        memecoin_symbol: String,
+        memecoin_uri: String,
+        memecoin_description: String,
+        memecoin_website: String,
+        memecoin_telegram: String,
+        memecoin_twitter: String,
+    ) -> Result<()> {
+        return mint_memecoin::handler(
+            ctx,
             &memecoin_name,
             &memecoin_symbol,
             &memecoin_uri,
-        //    &memecoin_description,
-          //  &memecoin_website,
-            //&memecoin_telegram,
-            //&memecoin_twitter,
-            funding_raise_tier,
+            &memecoin_description,
+            &memecoin_website,
+            &memecoin_telegram,
+            &memecoin_twitter,
         );
     }
 
