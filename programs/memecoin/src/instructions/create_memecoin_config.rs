@@ -76,6 +76,7 @@ pub fn handler(
     let creator = &ctx.accounts.creator.key();
     let current_timestamp = ctx.accounts.clock.unix_timestamp as u64;
 
+    /*
     // Charge for the create memecoin fee
     let transfer_instruction = lamports_transfer(
         &ctx.accounts.creator.key(),
@@ -90,6 +91,7 @@ pub fn handler(
             ctx.accounts.system_program.to_account_info(),
         ],
     )?;
+     */
 
     let memecoin_config = &mut ctx.accounts.memecoin_config;
     let tier = match funding_raise_tier {
