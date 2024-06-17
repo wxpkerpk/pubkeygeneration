@@ -75,7 +75,7 @@ pub fn handler(
 ) -> Result<()> {
     let creator = &ctx.accounts.creator.key();
     let current_timestamp = ctx.accounts.clock.unix_timestamp as u64;
-
+     msg!("=======================create memecoinconfig.");
     /*
     // Charge for the create memecoin fee
     let transfer_instruction = lamports_transfer(
