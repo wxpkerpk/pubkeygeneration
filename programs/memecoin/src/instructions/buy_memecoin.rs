@@ -16,6 +16,7 @@ use anchor_spl::{
 };
 use anchor_spl::token_interface::TokenInterface;
 use crate::errors::ErrorCode;
+use serde::{Serialize, Deserialize};
 
 #[derive(Accounts)]
 pub struct BuyMemecoin<'info> {
@@ -64,6 +65,8 @@ pub struct BuyMemecoin<'info> {
 }
 
 #[event]
+#[derive(Serialize, Deserialize, Debug)]
+
 pub struct MemecoinBought {
     pub buyer: Pubkey,
     pub buy_amount: u64,
@@ -152,15 +155,19 @@ pub fn handler(
     let remain_amount = (MEMECOIN_TOTAL_SUPPLY / 2)
         .checked_sub(sold_amount).unwrap()
         .checked_sub(buy_amount).unwrap();
-    emit!(MemecoinBought {
+        let event=MemecoinBought {
             buyer: ctx.accounts.buyer.key(),
             buy_amount,
             mint: ctx.accounts.mint.key(),
             token_price,
             remain_amount,
             hash: hash.to_string(),
-        }
-    );
+        };
+        let serialized = serde_json::to_string(&event).unwrap();
+        msg!("===================================");
+        msg!("buylog:{}",serialized);
+        msg!("===================================");
+    emit!(&event);
 
     Ok(())
 }

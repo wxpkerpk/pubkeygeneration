@@ -14,8 +14,8 @@ memecoin = "AGAqYVPTrydtAdzLQBt8c1Rp61dHNipmsiCPHyYgMzV"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "devnet"
-wallet = "~/.config/solana/id.json_memecoin"
+cluster = "https://restless-quaint-arm.solana-mainnet.quiknode.pro/1b7ce8105449f919ab95fe6b893001566bd3e25c/"
+wallet = "/home/code/keypair.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
