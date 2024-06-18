@@ -68,9 +68,9 @@ pub struct BuyMemecoin<'info> {
 #[derive(Serialize, Deserialize, Debug)]
 
 pub struct MemecoinBought {
-    pub buyer: Pubkey,
+    pub buyer: String,
     pub buy_amount: u64,
-    pub mint: Pubkey,
+    pub mint: String,
     pub token_price: u64,
     pub remain_amount: u64, // Remaining amount to sell
     pub hash: String,
@@ -156,9 +156,9 @@ pub fn handler(
         .checked_sub(sold_amount).unwrap()
         .checked_sub(buy_amount).unwrap();
         let event=MemecoinBought {
-            buyer: ctx.accounts.buyer.key(),
+            buyer: ctx.accounts.buyer.key().to_string(),
             buy_amount,
-            mint: ctx.accounts.mint.key(),
+            mint: ctx.accounts.mint.key().to_string(),
             token_price,
             remain_amount,
             hash: hash.to_string(),
