@@ -19,6 +19,8 @@ use anchor_spl::{
     //token_2022::{mint_to, MintTo},
     //token_interface::Mint,
 };
+use serde::{Serialize, Deserialize};
+
 use anchor_spl::token_interface::TokenInterface;
 //use mpl_token_metadata::accounts::{MasterEdition, Metadata as MetadataAccount };
 use mpl_token_metadata::pda::find_metadata_account;
@@ -71,12 +73,13 @@ pub struct MintMemecoin<'info> {
 }
 
 #[event]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct MemecoinCreated {
-    pub creator: Pubkey,
+    pub creator: String,
     pub created_time: u64,
-    pub memecoin_config: Pubkey,
-    pub mint: Pubkey,
-    pub destination: Pubkey,
+    pub memecoin_config: String,
+    pub mint: String,
+    pub destination: String,
     pub name: String,
     pub symbol: String,
     pub uri: String,
@@ -158,23 +161,28 @@ pub fn handler(
         FundingRaiseTier::OneHundredSol => 2,
         _ => return err!(ErrorCode::InvalidFundingRaiseTier),
     };
-    emit!(MemecoinCreated {
-            creator: ctx.accounts.creator.key(),
-            created_time: ctx.accounts.memecoin_config.created_time,
-            memecoin_config: ctx.accounts.memecoin_config.key(),
-            mint: ctx.accounts.mint.key(),
-            destination: ctx.accounts.destination.key(),
-            name: memecoin_name.to_string(),
-            symbol: memecoin_symbol.to_string(),
-            uri: memecoin_uri.to_string(),
-            description: memecoin_description.to_string(),
-            decimal: 6,
-            website: memecoin_website.to_string(),
-            telegram: memecoin_telegram.to_string(),
-            twitter: memecoin_twitter.to_string(),
-            funding_raise_tier,
-        }
-    );
+    let event=MemecoinCreated {
+        creator: ctx.accounts.creator.key().to_string(),
+        created_time: ctx.accounts.memecoin_config.created_time,
+        memecoin_config: ctx.accounts.memecoin_config.key().to_string(),
+        mint: ctx.accounts.mint.key().to_string(),
+        destination: ctx.accounts.destination.key().to_string(),
+        name: memecoin_name.to_string(),
+        symbol: memecoin_symbol.to_string(),
+        uri: memecoin_uri.to_string(),
+        description: memecoin_description.to_string(),
+        decimal: 6,
+        website: memecoin_website.to_string(),
+        telegram: memecoin_telegram.to_string(),
+        twitter: memecoin_twitter.to_string(),
+        funding_raise_tier,
+    };
+    let serialized = serde_json::to_string(&event).unwrap();
+
+    msg!("MemecoinCreated:{}",serialized);
+
+  
+ 
 
 
 
