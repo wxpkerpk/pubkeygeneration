@@ -60,7 +60,7 @@ pub struct CreateMemecoinConfig<'info> {
         seeds = [b"CONFIG"],
         bump
     )]
-    pub global_config: Box<Account<'info, GlobalConfig>>,
+    pub global_config: Account<'info, GlobalConfig>,
 
     pub rent: Sysvar<'info, Rent>,
     pub clock: Sysvar<'info, Clock>,
