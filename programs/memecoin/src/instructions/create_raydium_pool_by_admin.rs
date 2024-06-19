@@ -104,7 +104,7 @@ pub fn handler(ctx: Context<CreateRaydiumPoolByAdmin>) -> Result<()> {
 
     let total_funding_raise_amount = ctx.accounts.memecoin_config.funding_raise_tier.value();
     let launch_success_fee_bps = ctx.accounts.global_config.launch_success_fee_bps as u64;
-    let launch_success_fee_sol_amount = total_funding_raise_amount
+    let mut launch_success_fee_sol_amount = total_funding_raise_amount
         .checked_mul(launch_success_fee_bps).ok_or_else(|| ErrorCode::CalculationError)?
         .checked_div(10000u64).ok_or_else(|| ErrorCode::CalculationError)?;
     let transfer_to_admin_wsol_amount = total_funding_raise_amount
@@ -174,6 +174,17 @@ pub fn handler(ctx: Context<CreateRaydiumPoolByAdmin>) -> Result<()> {
     msg!("launch success fee memecoin amount is : {}", launch_success_fee_memecoin_amount);
 
     // Transfer sol fee
+    let rent = Rent::get()?;
+    let account_size = ctx.accounts.memecoin_config.to_account_info().data_len();
+    let rent_exempt_minimum = rent.minimum_balance(account_size);
+
+    // Calculate the amount of lamports to transfer
+    let memecoin_config_account_balance = **ctx.accounts.memecoin_config.to_account_info().lamports.borrow();
+    let lamports_to_transfer = memecoin_config_account_balance.saturating_sub(rent_exempt_minimum);
+    if launch_success_fee_sol_amount > lamports_to_transfer {
+        launch_success_fee_sol_amount = lamports_to_transfer;
+    }
+
     ctx.accounts.memecoin_config.sub_lamports(launch_success_fee_sol_amount)?;
     ctx.accounts.launch_success_fee_receiver.add_lamports(launch_success_fee_sol_amount)?;
     msg!("launch success fee sol amount is : {}", launch_success_fee_sol_amount);
