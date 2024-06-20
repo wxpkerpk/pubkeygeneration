@@ -40,10 +40,8 @@ pub struct ClaimLamports<'info> {
 
     #[account(
         mut,
-        token::mint = mint,
-        token::authority = claimer,
-        seeds=[b"MEME_COIN", mint.key().as_ref(), claimer.key().as_ref()],
-        bump
+        associated_token::mint = mint,
+        associated_token::authority = claimer
     )]
     pub claimer_token: Account<'info, TokenAccount>,
 
@@ -59,8 +57,7 @@ pub struct ClaimLamports<'info> {
     pub clock: Sysvar<'info, Clock>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
-    /// Spl token program or token program 2022
-    pub token_2022_program: Interface<'info, TokenInterface>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
 #[event]
