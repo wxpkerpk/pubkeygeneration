@@ -40,10 +40,8 @@ pub struct BuyMemecoin<'info> {
     #[account(
         init_if_needed,
         payer = buyer,
-        token::mint = mint,
-        token::authority = buyer,
-        seeds=[b"MEME_COIN", mint.key().as_ref(), buyer.key().as_ref()],
-        bump
+        associated_token::mint = mint,
+        associated_token::authority = buyer
     )]
     pub buyer_token: Account<'info, TokenAccount>,
 
