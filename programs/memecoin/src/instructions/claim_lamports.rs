@@ -80,7 +80,7 @@ pub fn handler(
     let current_timestamp = ctx.accounts.clock.unix_timestamp as u64;
     if current_timestamp >= ctx.accounts.memecoin_config.created_time + 3600 {
         let memecoin_config = &mut ctx.accounts.memecoin_config;
-        if sold_amount == MEMECOIN_TOTAL_SUPPLY / 2 {
+        if sold_amount == (MEMECOIN_TOTAL_SUPPLY * 7 / 10) {
             memecoin_config.set_memecoin_status(
                 LaunchStatus::Succeed
             )?;

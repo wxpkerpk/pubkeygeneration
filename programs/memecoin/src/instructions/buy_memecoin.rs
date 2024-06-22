@@ -86,13 +86,13 @@ pub fn handler(
     let sold_amount = MEMECOIN_TOTAL_SUPPLY
         .checked_sub(memecoin_config_token_balance)
         .ok_or_else(|| ErrorCode::CalculationError)?;
-    require!(sold_amount + buy_amount <= MEMECOIN_TOTAL_SUPPLY / 2, ErrorCode::UnsoldTokenInsufficient);
+    require!(sold_amount + buy_amount <= (MEMECOIN_TOTAL_SUPPLY * 7 / 10) , ErrorCode::UnsoldTokenInsufficient);
 
     let current_timestamp = ctx.accounts.clock.unix_timestamp as u64;
     let memecoin_created_time = ctx.accounts.memecoin_config.created_time;
     let memecoin_config = &mut ctx.accounts.memecoin_config;
     if current_timestamp >= memecoin_created_time + 3600 {
-        if sold_amount == MEMECOIN_TOTAL_SUPPLY / 2 {
+        if sold_amount == (MEMECOIN_TOTAL_SUPPLY * 7 / 10) {
             memecoin_config.set_memecoin_status(
                 LaunchStatus::Succeed
             )?;
@@ -104,7 +104,7 @@ pub fn handler(
 
         return err!(ErrorCode::SaleClosed);
     } else {
-        if sold_amount + buy_amount == MEMECOIN_TOTAL_SUPPLY / 2 {
+        if sold_amount + buy_amount == (MEMECOIN_TOTAL_SUPPLY * 7 / 10) {
             memecoin_config.set_memecoin_status(
                 LaunchStatus::Succeed
             )?;
@@ -150,7 +150,7 @@ pub fn handler(
         buy_amount,
     )?;
 
-    let remain_amount = (MEMECOIN_TOTAL_SUPPLY / 2)
+    let remain_amount = (MEMECOIN_TOTAL_SUPPLY * 7 / 10)
         .checked_sub(sold_amount).unwrap()
         .checked_sub(buy_amount).unwrap();
         let event=MemecoinBought {
