@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use instructions::*;
 use state::{InitTokenParams, FundingRaiseTier};
 
-declare_id!("AGAqYVPTrydtAdzLQBt8c1Rp61dHNipmsiCPHyYgMzV");
+declare_id!("C6L4yyXXCc44SVXvUSnijjMgmhqxAStM69qfd7yummZM");
 
 pub mod errors;
 pub mod constants;
