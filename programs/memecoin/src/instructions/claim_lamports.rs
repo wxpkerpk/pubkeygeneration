@@ -130,8 +130,9 @@ pub fn handler(
     }
     let launch_success_fee_bps = ctx.accounts.global_config.launch_success_fee_bps as u64;
 
-    let claim_sol_fee=  total_lamports.checked_mul(launch_success_fee_bps.checked_mul(total_lamports).ok_or_else(|| ErrorCode::CalculationError)?).
-    checked_div(10000u64).ok_or_else(|| ErrorCode::CalculationError)?.ok_or_else(|| ErrorCode::CalculationError)?;
+    let claim_sol_fee=  (total_lamports.checked_mul(launch_success_fee_bps)
+    .ok_or_else(|| ErrorCode::CalculationError)?)
+    .checked_div(10000u64).ok_or_else(|| ErrorCode::CalculationError)?;
     total_lamports=total_lamports- claim_sol_fee;
 
     ctx.accounts.memecoin_config.sub_lamports(total_lamports)?;
