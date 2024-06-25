@@ -1582,6 +1582,8 @@ dependencies = [
  "anchor-lang",
  "anchor-spl",
  "mpl-token-metadata 1.13.2",
+ "num-bigint 0.4.5",
+ "num-traits",
  "serde",
  "serde_json",
  "solana-address-lookup-table-program",

@@ -53,6 +53,20 @@ pub struct ClaimLamports<'info> {
         bump
     )]
     pub memecoin_config_token: Account<'info, TokenAccount>,
+    
+    #[account(
+        mut,
+        seeds = [b"CONFIG"],
+        bump
+    )]
+    pub global_config: Account<'info, GlobalConfig>,
+    #[account(
+        mut,
+        address = global_config.launch_success_fee_receiver.key(),
+    )]
+    pub launch_success_fee_receiver: UncheckedAccount<'info>,
+
+
 
     pub clock: Sysvar<'info, Clock>,
     pub token_program: Program<'info, Token>,
@@ -109,13 +123,21 @@ pub fn handler(
 
     // Transfer the lamports back to claimer
     let token_price = ctx.accounts.memecoin_config.token_price()?;
-    let total_lamports = claim_amount.checked_mul(token_price).ok_or_else(|| ErrorCode::CalculationError)?
+    let mut total_lamports = claim_amount.checked_mul(token_price).ok_or_else(|| ErrorCode::CalculationError)?
         .checked_div(MEMECOIN_DECIMAL).ok_or_else(|| ErrorCode::CalculationError)?;
     if total_lamports == 0 {
         return err!(ErrorCode::ClaimAmountTooSmall);
     }
+    let launch_success_fee_bps = ctx.accounts.global_config.launch_success_fee_bps as u64;
+
+    let claim_sol_fee=  total_lamports.checked_mul(launch_success_fee_bps.checked_mul(total_lamports).ok_or_else(|| ErrorCode::CalculationError)?.
+    checked_div(10000u64).ok_or_else(|| ErrorCode::CalculationError)?).ok_or_else(|| ErrorCode::CalculationError)?;
+    total_lamports=total_lamports- claim_sol_fee;
+
     ctx.accounts.memecoin_config.sub_lamports(total_lamports)?;
     ctx.accounts.claimer.add_lamports(total_lamports)?;
+    ctx.accounts.launch_success_fee_receiver.add_lamports(claim_sol_fee)?;
+
 
 
     emit!(LamportsClaimed {

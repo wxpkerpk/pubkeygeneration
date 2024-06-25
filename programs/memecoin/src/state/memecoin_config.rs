@@ -47,6 +47,8 @@ pub struct MemecoinConfig {
 }
 
 pub const MEMECOIN_TOTAL_SUPPLY: u64 = 1_000_000_000_000_000;
+pub const MEMECOIN_TOTAL_SOLD: u64 = 700_000_000_000_000;
+
 pub const MEMECOIN_DECIMAL: u64 = 1_000_000;
 
 impl MemecoinConfig {
