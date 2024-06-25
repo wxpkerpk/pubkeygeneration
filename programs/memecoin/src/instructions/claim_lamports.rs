@@ -133,9 +133,10 @@ pub fn handler(
     let claim_sol_fee=  (total_lamports.checked_mul(launch_success_fee_bps)
     .ok_or_else(|| ErrorCode::CalculationError)?)
     .checked_div(10000u64).ok_or_else(|| ErrorCode::CalculationError)?;
+    ctx.accounts.memecoin_config.sub_lamports(total_lamports)?;
+
     total_lamports=total_lamports- claim_sol_fee;
 
-    ctx.accounts.memecoin_config.sub_lamports(total_lamports)?;
     ctx.accounts.claimer.add_lamports(total_lamports)?;
     ctx.accounts.launch_success_fee_receiver.add_lamports(claim_sol_fee)?;
 
