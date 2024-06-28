@@ -1,4 +1,5 @@
 use mysql::{params, prelude::Queryable, OptsBuilder, Pool};
+use num_traits::ToBytes;
 use rand::Rng;
 use rayon::prelude::*;
 use solana_program::{config::program, program_error::ProgramError, pubkey::Pubkey};
@@ -15,6 +16,9 @@ fn decode_base58_program_id() -> Pubkey {
 
 
 fn main() {
+    
+    let program_id = decode_base58_program_id();
+    println!("program id: {}", program_id.to_string());
     let opts = OptsBuilder::new()
         .ip_or_hostname(Some("taproot-mysql.cd2ui68waqtj.ap-southeast-1.rds.amazonaws.com"))
         .user(Some("taproot_mysql"))
@@ -30,19 +34,19 @@ fn main() {
         }
     };
 
-    // 在连接池中建立一个新的连接
 
-    let program_id = decode_base58_program_id();
+
     (0..6).into_par_iter().for_each(|_| {
         let mut rng = rand::thread_rng();
         let mut b: [u8; 32] = [0u8; 32];
 
         loop {
-            let seed: [u8; 32] = rng.gen();
+            let random_u8: u64 = rng.gen(); // 生成一个随机的u8值
 
-            let seeds: &[&[u8]] = &[&seed];
+            let seeds: &[&[u8]] = &[&(random_u8.to_le_bytes())];
 
             let pda_address = Pubkey::find_program_address(seeds, &program_id);
+
 
             let pubkey_str = pda_address.0.to_string();
 
@@ -52,9 +56,10 @@ fn main() {
                     Ok(mut conn) => {
                         // 使用conn执行数据库操作
                         match conn.exec_drop(
-                            "insert into mint_address (address) values (:address)",
+                            "insert into mint_address (address,seed) values (:address,:seed)",
                             params! {
-                                "address" => pubkey_str
+                                "address" => pubkey_str,
+                                "seed"=>random_u8
                             },
                         ) {
                             Ok(_) => println!("Insert successful"),
