@@ -51,7 +51,7 @@ fn main() {
             let pubkey_str = pda_address.0.to_string();
 
             if pubkey_str.to_lowercase().ends_with("meme") {
-                println!("Solana 公钥: {}", pubkey_str);
+                println!("Solana 公钥: {},  seed:{}", pubkey_str,random_u8);
                 match pool.get_conn() {
                     Ok(mut conn) => {
                         // 使用conn执行数据库操作
